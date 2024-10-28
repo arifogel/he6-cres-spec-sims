@@ -14,7 +14,7 @@ class SegmentBuilder:
         self.jump_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.energy_loss)
 
         # distribution of track durations [s]
-        self.segment_length_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.segment_length)
+        self.track_length_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.track_length)
 
         # distribution of scattering angles [degrees]
         self.scattering_angle_distribution = config.dist_interface.get_distribution(self.config.segmentbuilder.scattering_angle)
@@ -46,7 +46,7 @@ class SegmentBuilder:
             event["freq_start"] = event["avg_cycl_freq"]
 
             # Assign track 0 of event with a scatter time.
-            scatter_time = event["time_start"] + self.segment_length_distribution.generate()
+            scatter_time = event["time_start"] + self.track_length_distribution.generate()
 
             # Begin with trapped beta (track 0 of event).
             tracks = [event]
@@ -94,7 +94,7 @@ class SegmentBuilder:
                     new_track["freq_start"] = new_track["avg_cycl_freq"]
                     tracks.append(new_track)
                     jump_num += 1
-                    scatter_time = new_track["time_start"] + self.segment_length_distribution.generate()
+                    scatter_time = new_track["time_start"] + self.track_length_distribution.generate()
                     end_time = (trap_on_time, scatter_time) [scatter_time<trap_on_time]
                 else: 
                     is_trapped=False
