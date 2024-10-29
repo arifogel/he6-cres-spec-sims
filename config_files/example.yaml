@@ -1,0 +1,75 @@
+# he6_cres_spec_sims example config file.
+# if sim_daq: you must specify number acquisitions and acquisition time and event rates.
+
+Settings:
+    rand_seed: 715
+    sim_daq: False #If true will simulate daq and create spec file, if false no need to fill out daq section
+
+Physics:
+    events_to_simulate : 100 #if sim_daq==True will instead calculate appropriate event rate for each spec file
+    betas_to_simulate : 100
+    beta_rate: 1.5e+4
+    freq_acceptance_low: 18.0e+9
+    freq_acceptance_high: 19.1e+9
+    energy:
+        distribution: "beta_decay"
+        isotope: "He6"
+        b: 0
+    rho:
+        distribution: "uniform_annulus"
+        rho_min : 0.0
+        rho_max : 5.78e-3
+    z:
+        distribution: "uniform"
+        low : -1.5e-2
+        high : 1.5e-2
+    min_theta : 89.0
+    max_theta : 90.0
+
+EventBuilder:
+    main_field : 1.700468
+    trap_current : .1
+    decay_cell_radius : 5.78e-3
+
+SegmentBuilder:
+    start_time:
+        distribution: "fixed"
+        value: 0.0
+    track_length:
+        distribution: "exponential"
+        tau: 1.0e-3
+    energy_loss:
+        distribution: "normal"
+        mean : 14
+        sigma : 5
+    scattering_angle:
+        distribution: "fixed"
+        value: 0.0
+    jump_num_max : 3
+
+BandBuilder:
+    sideband_num: 0
+    frac_total_segment_power_cut : 0.01
+    harmonic_sidebands: True
+    magnetic_modulation: False
+
+TrackBuilder:
+    run_length: 60.0e-4
+
+DMTrackBuilder:
+    mixer_freq: 17.9e+9
+
+Daq:
+    n_files: 2
+    spec_length: .006
+    freq_bw: 1.2e+9
+    freq_bins: 4096
+    roach_avg: 2
+    roach_inverted_flag: True # this effectively deletes every other file when roach_avg=2
+    requant_gain: 17
+    noise_file_gain: 17 #requant gain that the noise profile was taken with
+    build_labels: False
+    gain_noise_csv_path: "/Users/buzinsky/Builds/spec_sims_SNR/he6-cres-spec-sims/config_files/base_gain_noise.csv"
+    spec_prefix: "SNR_dev"
+    spec_suffix: "spec"
+    threshold_factor: 9

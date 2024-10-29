@@ -1,29 +1,29 @@
 import numpy as np
-import pathlib
+import os
 import pandas as pd
-import matplotlib.pyplot as plt
-import ipywidgets as widgets
-from ipywidgets import interact, interact_manual, fixed
-# import seaborn as sns
 import sys
 
-# Additional settings. 
+# Additional settings.
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 
-# Path to local imports. Alter to match your machine. 
-sys.path.insert(1,"/home/lm11887/He6CRES/he6-cres-spec-sims/src")#/he6_cres_spec_sims")
-print(sys.path)
+#path to local imports
+#automatically get directory of current file (in config_files)
+config_dir = os.path.dirname(os.path.abspath(__file__))
+print("spec-sims config directory: "  +str(config_dir))
+parent_dir = os.path.dirname(config_dir)
+src_dir = parent_dir + "/src/"
+print("spec-sims src directory: "  +str(src_dir))
+#add to paths
+sys.path.append(src_dir)
+
 
 # Local imports.
 import he6_cres_spec_sims.experiment as exp
-#fields = np.linspace(0.75, 3.25, 11)
 fields = np.array([1.0])
-#traps = np.around((fields/3),8)
 traps = np.around(fields*1.8/3.25,6)
 rand_seeds = np.array(fields*1213, dtype = int)
-#rand_seeds = [None, None]
-base_config_path = "/home/lm11887/He6CRES/spec_sims_results/local_experiments/local_base_config_example.yaml"
+base_config_path = config_dir + "/example.yaml"
 
 experiment_params = {
     "experiment_name": "ne_051424",
@@ -32,12 +32,11 @@ experiment_params = {
     "betas_to_simulate": 100,
     "isotope": "Ne19",
     "rand_seeds": rand_seeds,
-    "fields_T" : fields.tolist(), 
+    "fields_T" : fields.tolist(),
     "traps_A": traps.tolist()
 }
 
-for key, val in experiment_params.items(): 
+for key, val in experiment_params.items():
     print("{}: {}".format(key, val))
 
-ne19_exp = exp.Experiment(experiment_params)
-
+exp.Experiment(experiment_params)
