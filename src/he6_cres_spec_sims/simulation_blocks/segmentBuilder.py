@@ -46,7 +46,8 @@ class SegmentBuilder:
             event["freq_start"] = event["avg_cycl_freq"]
 
             # Assign track 0 of event with a scatter time.
-            scatter_time = event["time_start"] + self.track_length_distribution.generate()
+            track_duration = self.track_length_distribution.generate()
+            scatter_time = event["time_start"] + track_duration
 
             # Begin with trapped beta (track 0 of event).
             tracks = [event]
@@ -57,8 +58,8 @@ class SegmentBuilder:
 
             #TODO maybe this should be a different varibale in the config... or maybe just renamed
             trap_on_time = self.config.daq.spec_length if self.config.daq.spec_length else float('inf')
-            end_time = (trap_on_time, scatter_time) [scatter_time<trap_on_time]
-            
+            end_time = min(trap_on_time, scatter_time)
+
             event_segments = []
             while is_trapped and jump_num<=self.config.segmentbuilder.jump_num_max:
                 if self.verbosity == True: print(f"Event {event_index}, Jump {jump_num}")
