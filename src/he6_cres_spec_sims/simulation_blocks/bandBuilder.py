@@ -67,14 +67,14 @@ class BandBuilder:
                     band_list.append(row_copy.tolist())
 
                     if band_num==0:
-                        for segment in segments[int(row_copy["event_num"])][int(row_copy["segment_num"])][0]:
+                        for segment in segments[int(row_copy["event_num"])][int(row_copy["track_num"])][0]:
                             segment.set_power(row_copy["band_power_start"])
 
                     else:
-                        track_segments = segments[int(row_copy["event_num"])][int(row_copy["segment_num"])][0]
+                        track_segments = segments[int(row_copy["event_num"])][int(row_copy["track_num"])][0]
                         freq_shift = row_copy["avg_cycl_freq"] - row["avg_cycl_freq"]
                         new_tracks = [segment.copy().shift_frequency(freq_shift).set_band(band_num) for segment in track_segments]
-                        segments[int(row_copy["event_num"])][int(row_copy["segment_num"])][band_num] = new_tracks
+                        segments[int(row_copy["event_num"])][int(row_copy["track_num"])][band_num] = new_tracks
 
         bands_df = pd.DataFrame(band_list, columns=tracks_df.columns)
 

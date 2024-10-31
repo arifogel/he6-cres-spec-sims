@@ -79,7 +79,7 @@ class SegmentBuilder:
                 tracks[-1]["segment_num"] = jump_num
 
                 # for building bands later we set the band number using a dictionary key  
-                # (we need negative numbers so another nested arrat wouldnt work)
+                # (we need negative numbers so another nested array wouldnt work)
                 event_segments.append({0:track_segments})
                 tracks_list.append(tracks[-1].values.tolist())
 
@@ -104,9 +104,9 @@ class SegmentBuilder:
 
         # TODO there may be a more elegant way to update the columns... but this works for now       
         columns = np.append(trapped_event_df.columns.to_numpy(), ["time_start","freq_start","time_stop"])
-        scattered_df = pd.DataFrame(tracks_list, columns=columns)
+        tracks_df = pd.DataFrame(tracks_list, columns=columns)
 
-        return scattered_df, segments
+        return tracks_df, segments
     
     def scatter(self, event):
         """Creates Scattered track from initial event conditions.
@@ -167,19 +167,19 @@ class SegmentBuilder:
         )
 
         # Third, construct a scattered, meaning potentially not-trapped, segment df
-        return self.eventbuilder.construct_untrapped_segment_df(beta_position, beta_direction, energy, event_num, beta_num)
+        return self.eventbuilder.construct_untrapped_track_df(beta_position, beta_direction, energy, event_num, beta_num)
 
-    def fill_in_properties(self, incomplete_scattered_segments_df):
+    def fill_in_properties(self, incomplete_scattered_events_df):
         """ Assigns calculated properties (e.g. axial frequency, power, slope, etc.)
             to beta with given (E, theta, rho) in the magnetic field profile
         """
 
-        df = incomplete_scattered_segments_df.copy()
+        df = incomplete_scattered_events_df.copy()
         trap_profile = self.config.trap_profile
         main_field = self.config.eventbuilder.main_field
         decay_cell_radius = self.config.eventbuilder.decay_cell_radius
 
-        # Calculate all relevant segment parameters. Order matters here.
+        # Calculate all relevant track parameters. Order matters here.
         axial_freq = sc.axial_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
 
         # TODO: Make this more accurate as per discussion with RJ.
@@ -190,7 +190,7 @@ class SegmentBuilder:
         mod_index = sc.mod_index(avg_cycl_freq, zmax)
 
 
-        segment_radiated_power_te11 = (
+        track_radiated_power_te11 = (
             pc.power_calc(
                 df["center_x"],
                 df["center_y"],
@@ -201,11 +201,11 @@ class SegmentBuilder:
             * 2
         )
 
-        segment_radiated_power_tot = sc.power_larmor(main_field, avg_cycl_freq)
+        track_radiated_power_tot = sc.power_larmor(main_field, avg_cycl_freq)
 
-        # slope = sc.df_dt( df["energy"], self.config.eventbuilder.main_field, segment_radiated_power)
+        # slope = sc.df_dt( df["energy"], self.config.eventbuilder.main_field, track_radiated_power)
 
-        energy_stop = ( df["energy"] - segment_radiated_power_tot * df["segment_length"] * J_TO_EV)
+        energy_stop = ( df["energy"] - track_radiated_power_tot * df["track_length"] * J_TO_EV)
 
         # Replace negative energies if energy_stop is a float or pandas series
         if isinstance(energy_stop, pd.core.series.Series):
@@ -214,9 +214,9 @@ class SegmentBuilder:
             energy_stop = 1e-10
 
         freq_stop = sc.avg_cycl_freq( energy_stop, df["center_theta"], df["rho_center"], trap_profile)
-        slope = (freq_stop - avg_cycl_freq) / df["segment_length"]
+        slope = (freq_stop - avg_cycl_freq) / df["track_length"]
 
-        segment_power = segment_radiated_power_te11 / 2
+        track_power = track_radiated_power_te11 / 2
 
         df["axial_freq"] = axial_freq
         df["avg_cycl_freq"] = avg_cycl_freq
@@ -227,7 +227,7 @@ class SegmentBuilder:
         df["zmax"] = zmax
         df["mod_index"] = mod_index
         df["slope"] = slope
-        df["segment_power"] = segment_power
+        df["track_power"] = track_power
 
         return df
     

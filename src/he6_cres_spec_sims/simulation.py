@@ -45,15 +45,15 @@ class Simulation:
         if self.config.settings.sim_daq:
             daq = sim_blocks.DAQ.DAQ(self.config)
 
-        events = eventbuilder.run()
-        tracks, segments = segmentbuilder.run(events)
+        trapped_events = eventbuilder.run()
+        tracks, segments = segmentbuilder.run(trapped_events)
         bands = bandbuilder.run(tracks, segments)
-        dmtracks = dmtrackbuilder.run(bands, segments)
+        downmixed_tracks = dmtrackbuilder.run(bands, segments)
         if self.config.settings.sim_daq:
-            spec_array = daq.run(dmtracks)
+            spec_array = daq.run(downmixed_tracks)
         # Save the results of the simulation:
-        # For now only write dmtracks to keep things lightweight.
-        results = Results(dmtracks)
+        # For now only write downmixed_tracks to keep things lightweight.
+        results = Results(downmixed_tracks)
         results.save(self.config_path)
 
         return None
