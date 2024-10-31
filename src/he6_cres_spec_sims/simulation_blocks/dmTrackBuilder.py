@@ -7,7 +7,7 @@ class DMTrackBuilder:
     def __init__(self, config):
         self.config = config
 
-    def run(self, tracks_df, segments):
+    def run(self, tracks_df, events):
         print("~~~~~~~~~~~~DMTrackBuilder Block~~~~~~~~~~~~~~\n")
         mixer_freq = self.config.downmixer.mixer_freq
         print( "Downmixing the cyclotron frequency with a {} GHz signal".format( np.around(mixer_freq * 1e-9, 4)))
@@ -16,7 +16,7 @@ class DMTrackBuilder:
         downmixed_tracks_df["freq_stop"] = downmixed_tracks_df["freq_stop"] - mixer_freq
 
         #TODO need to see how slow this is because I do not like having this quadruple nested for loop...
-        for event in segments:
+        for event in events:
             for track in event:
                 for band in track:
                     for segment in track[band]:
