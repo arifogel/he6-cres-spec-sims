@@ -102,8 +102,8 @@ class SegmentBuilder:
 
             segments.append(event_segments)
 
-        # TODO there may be a more elegant way to update the columns... but this works for now       
-        columns = np.append(trapped_event_df.columns.to_numpy(), ["time_start","freq_start","time_stop"])
+        # TODO there may be a more elegant way to update the columns... but this works for now     
+        columns = np.append(trapped_event_df.columns.to_numpy(), ["time_start","freq_start","time_stop", "energy_stop"])
         tracks_df = pd.DataFrame(tracks_list, columns=columns)
 
         return tracks_df, segments
