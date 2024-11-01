@@ -95,7 +95,7 @@ class Config:
                     self.settings = DotDict(config_dict["Settings"])
                     self.physics = DotDict(config_dict["Physics"])
                     self.eventbuilder = DotDict(config_dict["EventBuilder"])
-                    self.segmentbuilder = DotDict(config_dict["SegmentBuilder"])
+                    self.trackbuilder = DotDict(config_dict["TrackBuilder"])
                     self.bandbuilder = DotDict(config_dict["BandBuilder"])
                     self.downmixer = DotDict(config_dict["DMTrackBuilder"])
                     self.daq = DotDict(config_dict["Daq"])

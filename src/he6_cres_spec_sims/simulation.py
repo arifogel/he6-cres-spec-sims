@@ -23,7 +23,7 @@ import pandas as pd
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
 import he6_cres_spec_sims.simulation_blocks.config
 import he6_cres_spec_sims.simulation_blocks.eventBuilder
-import he6_cres_spec_sims.simulation_blocks.segmentBuilder
+import he6_cres_spec_sims.simulation_blocks.trackBuilder
 import he6_cres_spec_sims.simulation_blocks.bandBuilder
 import he6_cres_spec_sims.simulation_blocks.dmTrackBuilder
 import he6_cres_spec_sims.simulation_blocks.DAQ
@@ -39,16 +39,16 @@ class Simulation:
     def run_full(self):
         # Initialize all simulation blocks.
         eventbuilder = sim_blocks.eventBuilder.EventBuilder(self.config)
-        segmentbuilder = sim_blocks.segmentBuilder.SegmentBuilder(self.config)
+        trackbuilder = sim_blocks.trackBuilder.TrackBuilder(self.config)
         bandbuilder = sim_blocks.bandBuilder.BandBuilder(self.config)
         dmtrackbuilder = sim_blocks.dmTrackBuilder.DMTrackBuilder(self.config)
         if self.config.settings.sim_daq:
             daq = sim_blocks.DAQ.DAQ(self.config)
 
         trapped_events = eventbuilder.run()
-        tracks, segments = segmentbuilder.run(trapped_events)
-        bands = bandbuilder.run(tracks, segments)
-        downmixed_tracks = dmtrackbuilder.run(bands, segments)
+        tracks_df, tracks = trackbuilder.run(trapped_events)
+        bands = bandbuilder.run(tracks_df, tracks)
+        downmixed_tracks = dmtrackbuilder.run(bands, tracks_df)
         if self.config.settings.sim_daq:
             spec_array = daq.run(downmixed_tracks)
         # Save the results of the simulation:

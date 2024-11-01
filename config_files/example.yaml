@@ -31,7 +31,7 @@ EventBuilder:
     trap_current : .1
     decay_cell_radius : 5.78e-3
 
-SegmentBuilder:
+TrackBuilder:
     start_time:
         distribution: "fixed"
         value: 0.0
@@ -49,12 +49,9 @@ SegmentBuilder:
 
 BandBuilder:
     sideband_num: 0
-    frac_total_segment_power_cut : 0.01
+    frac_total_track_power_cut : 0.01
     harmonic_sidebands: True
     magnetic_modulation: False
-
-TrackBuilder:
-    run_length: 60.0e-4
 
 DMTrackBuilder:
     mixer_freq: 17.9e+9
