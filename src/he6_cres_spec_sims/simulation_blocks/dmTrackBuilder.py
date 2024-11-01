@@ -15,12 +15,9 @@ class DMTrackBuilder:
         downmixed_tracks_df["freq_start"] = ( downmixed_tracks_df["freq_start"] - mixer_freq)
         downmixed_tracks_df["freq_stop"] = downmixed_tracks_df["freq_stop"] - mixer_freq
 
-        #TODO need to see how slow this is because I do not like having this quadruple nested for loop...
         for event in events:
             for track in event:
-                for band in track:
-                    for segment in track[band]:
-                        segment.shift_frequency(-mixer_freq)
+                track.shift_frequency(-mixer_freq)
 
 
         return downmixed_tracks_df

@@ -47,13 +47,13 @@ class Simulation:
 
         trapped_events = eventbuilder.run()
         tracks_df, tracks = trackbuilder.run(trapped_events)
-        bands = bandbuilder.run(tracks_df, tracks)
-        downmixed_tracks = dmtrackbuilder.run(bands, tracks_df)
+        bands_df, tracks = bandbuilder.run(tracks_df, tracks)
+        downmixed_tracks_df = dmtrackbuilder.run(bands_df, tracks)
         if self.config.settings.sim_daq:
-            spec_array = daq.run(downmixed_tracks)
+            spec_array = daq.run(downmixed_tracks_df)
         # Save the results of the simulation:
         # For now only write downmixed_tracks to keep things lightweight.
-        results = Results(downmixed_tracks)
+        results = Results(downmixed_tracks_df)
         results.save(self.config_path)
 
         return None

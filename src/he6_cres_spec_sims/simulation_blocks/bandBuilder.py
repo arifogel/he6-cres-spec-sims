@@ -47,13 +47,14 @@ class BandBuilder:
                     num_sidebands=sideband_num,
                 )[0]
 
+            # copy track in order to fill in band specific values
+            row_copy = row.copy()
+            bands= []
             for i, band_num in enumerate(range(-sideband_num, sideband_num + 1)):
 
                 if sideband_amplitudes[i][1] < frac_total_track_power_cut:
                     continue
                 else:
-                    # copy track in order to fill in band specific values
-                    row_copy = row.copy()
 
                     # fill in new avg_cycl_freq, band_power, band_num
                     # TODO: properly determine band power stop.
@@ -67,15 +68,15 @@ class BandBuilder:
                     band_list.append(row_copy.tolist())
 
                     if band_num==0:
-                        for track in tracks[int(row_copy["event_num"])][int(row_copy["track_num"])][0]:
-                            track.set_power(row_copy["band_power_start"])
+                        tracks[int(row_copy["event_num"])][int(row_copy["track_num"])].set_power(row_copy["band_power_start"])
 
                     else:
-                        track_subset = tracks[int(row_copy["event_num"])][int(row_copy["track_num"])][0]
+                        track_copy = tracks[int(row_copy["event_num"])][int(row_copy["track_num"])].copy()
                         freq_shift = row_copy["avg_cycl_freq"] - row["avg_cycl_freq"]
-                        new_tracks = [track.copy().shift_frequency(freq_shift).set_band(band_num) for track in track_subset]
-                        tracks[int(row_copy["event_num"])][int(row_copy["track_num"])][band_num] = new_tracks
+                        new_track = track_copy.shift_frequency(freq_shift).set_band(band_num)
+                        bands.append(new_track)
+                tracks[int(row_copy["event_num"])] += bands
 
         bands_df = pd.DataFrame(band_list, columns=tracks_df.columns)
 
-        return bands_df
+        return bands_df, tracks
