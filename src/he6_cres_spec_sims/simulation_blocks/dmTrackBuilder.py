@@ -16,8 +16,8 @@ class DMTrackBuilder:
         downmixed_tracks_df["freq_stop"] = downmixed_tracks_df["freq_stop"] - mixer_freq
 
         for event in events:
-            for track in event:
-                track.shift_frequency(-mixer_freq)
+            for band in event:
+                band.shift_frequency(-mixer_freq)
 
 
         return downmixed_tracks_df

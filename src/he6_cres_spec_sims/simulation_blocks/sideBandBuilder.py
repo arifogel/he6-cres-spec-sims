@@ -2,22 +2,22 @@ import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 import pandas as pd
 from he6_cres_spec_sims.simulation_blocks.trackBuilder import * 
 
-class BandBuilder:
-    """ Constructs list of sidebands and powers for trapped "segments", between scatters
+class SideBandBuilder:
+    """ Constructs list of sidebands and powers from main bands made in trackbuilder
     """
 
     def __init__(self, config):
 
         self.config = config
 
-    def run(self, tracks_df, tracks):
+    def run(self, tracks_df, bands):
 
-        print("~~~~~~~~~~~~BandBuilder Block~~~~~~~~~~~~~~\n")
-        sideband_num = self.config.bandbuilder.sideband_num
-        magnetic_modulation = self.config.bandbuilder.magnetic_modulation
-        harmonic_sidebands = self.config.bandbuilder.harmonic_sidebands
+        print("~~~~~~~~~~~~SideBandBuilder Block~~~~~~~~~~~~~~\n")
+        sideband_num = self.config.sidebandbuilder.sideband_num
+        magnetic_modulation = self.config.sidebandbuilder.magnetic_modulation
+        harmonic_sidebands = self.config.sidebandbuilder.harmonic_sidebands
 
-        frac_total_track_power_cut = self.config.bandbuilder.frac_total_track_power_cut
+        frac_total_track_power_cut = self.config.sidebandbuilder.frac_total_track_power_cut
         total_band_num = sideband_num * 2 + 1
         band_list = []
 
@@ -49,7 +49,7 @@ class BandBuilder:
 
             # copy track in order to fill in band specific values
             row_copy = row.copy()
-            bands= []
+            sidebands= []
             for i, band_num in enumerate(range(-sideband_num, sideband_num + 1)):
 
                 if sideband_amplitudes[i][1] < frac_total_track_power_cut:
@@ -68,15 +68,15 @@ class BandBuilder:
                     band_list.append(row_copy.tolist())
 
                     if band_num==0:
-                        tracks[int(row_copy["event_num"])][int(row_copy["track_num"])].set_power(row_copy["band_power_start"])
+                        bands[int(row_copy["event_num"])][int(row_copy["track_num"])].set_power(row_copy["band_power_start"])
 
                     else:
-                        track_copy = tracks[int(row_copy["event_num"])][int(row_copy["track_num"])].copy()
+                        band_copy = bands[int(row_copy["event_num"])][int(row_copy["track_num"])].copy()
                         freq_shift = row_copy["avg_cycl_freq"] - row["avg_cycl_freq"]
-                        new_track = track_copy.shift_frequency(freq_shift).set_band(band_num)
-                        bands.append(new_track)
-                tracks[int(row_copy["event_num"])] += bands
+                        new_track = band_copy.shift_frequency(freq_shift).set_band(band_num)
+                        sidebands.append(new_track)
+                bands[int(row_copy["event_num"])] += sidebands
 
         bands_df = pd.DataFrame(band_list, columns=tracks_df.columns)
 
-        return bands_df, tracks
+        return bands_df, bands

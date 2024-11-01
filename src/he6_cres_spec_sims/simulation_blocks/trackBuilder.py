@@ -1,5 +1,6 @@
 from .eventBuilder import *
 import he6_cres_spec_sims.spec_tools.spec_calc.power_calc as pc
+from .Band import *
 
 class TrackBuilder:
     """ Constructs a list of tracks (interrupted by scatters) making up the trapped event
@@ -32,7 +33,7 @@ class TrackBuilder:
         print("~~~~~~~~~~~~TrackBuilder Block~~~~~~~~~~~~~~\n")
         # Empty list to be filled with tracks.
         tracks_list = []
-        track_objects = []
+        bands = []
         #create tracks for every event
         for event_index, event in trapped_event_df.iterrows():
             if event_index % 25 == 0:
@@ -61,12 +62,12 @@ class TrackBuilder:
             trap_on_time = self.config.daq.spec_length if self.config.daq.spec_length else float('inf')
             end_time = min(trap_on_time, scatter_time)
 
-            #list of track objects (different from df track list)
-            event_tracks = []
+            #list of band objects (to be added to bands list)
+            event_main_bands = []
 
             '''
             Track building loop:
-            Basic idea is we have 2 while loops: one for scattering, and one for frequency/time dependent tracks
+            Basic idea is we have 2 while loops: one for scattering, and one for frequency/time dependent bands
             The reason for this is the physical attributes of an event change after a scatter but dont for the other
             features handled by freq/time dependent features (this is not strictly true but close enough for us)
             '''
@@ -78,10 +79,10 @@ class TrackBuilder:
                 track_radiated_power_tot = sc.power_larmor(field, freq)
                 while (t < end_time) and (freq < max_freq):
                     
-                    track = self.create_track(t, freq, track_radiated_power_tot, end_time, max_freq, event_index,
+                    band = self.create_band(t, freq, track_radiated_power_tot, end_time, max_freq, event_index,
                                                    jump_num, track_num, field)
-                    t, freq = track.end_time, track.end_freq
-                    event_tracks.append(track)
+                    t, freq = band.end_time, band.end_freq
+                    event_main_bands.append(band)
 
                     tracks[-1]["freq_stop"] = freq
                     tracks[-1]["time_stop"] = t
@@ -112,14 +113,14 @@ class TrackBuilder:
                 else: 
                     is_trapped=False
 
-            track_objects.append(event_tracks)
+            bands.append(event_main_bands)
 
         # TODO there may be a more elegant way to update the columns... but this works for now     
         columns = np.append(trapped_event_df.columns.to_numpy(), ["time_start","freq_start","time_stop"])
         tracks_df = pd.DataFrame(tracks_list, columns=columns)
         
 
-        return tracks_df, track_objects
+        return tracks_df, bands
     
     def scatter(self, event):
         """Creates Scattered track from initial event conditions.
@@ -244,11 +245,11 @@ class TrackBuilder:
 
         return df
     
-    def create_track(self, time, freq, power, max_time, max_freq, event, track, band, b_avg):
+    def create_band(self, time, freq, power, max_time, max_freq, event_num, track_num, band_num, b_avg):
         '''
-        This function creates a track object for a given time and frequency. Currently only check that we are within
+        This function creates a band object for a given time and frequency. Currently only check that we are within
         track length.
-        TODO add more track options
+        TODO add more band options
         '''
 
         # set different ranges of frequencies where different things can happen, the largest range is normal linear
@@ -260,65 +261,6 @@ class TrackBuilder:
         linear_range = [self.config.physics.freq_acceptance_low-0.1e9, self.config.physics.freq_acceptance_high]
         
         if linear_range[0] <= freq < linear_range[1]:
-            track = LinearTrack(time, freq, power, event, track, band, max_time, max_freq, b_avg)
+            band = LinearBand(time, freq, power, event_num, track_num, band_num, max_time, max_freq, b_avg)
 
-        return track
-
-class Track:
-    '''
-    A class for different types of tracks, the most common being a linear track. All tracks have a start
-    and end frequency and time and power, but  have different shapes and integrals.
-    '''
-
-    def __init__(self, start_time, start_freq, event, track, band, _power=None, _end_freq=None, _end_time=None,
-                  _track_type=None):
-        self.start_freq = start_freq
-        self.start_time = start_time
-        self.event = event
-        self.track = track # which track in the event is this
-        self.band = band
-        self.power = _power
-        self.end_freq = _end_freq
-        self.end_time = _end_time
-        self.track_type = _track_type
-
-    def set_power(self, power):
-        self.power = power
-        return self
-    
-    def set_band(self, band):
-        self.band = band
-        return self
-
-    def shift_frequency(self, shift):
-        self.start_freq += shift
-        self.end_freq += shift
-        return self
-    
-    def copy(self):
-        return Track(self.start_freq, self.start_time,self.event,self.track,self.band,self.power,self.end_freq,
-                          self.end_time, self.track_type)
-    
-    def __repr__(self):
-        return f"{self.track_type} Track"
-    
-    def __str__(self):
-        return f"{self.track_type} Track \n Event: {self.event} \n Track: {self.track} \n Band: {self.band}"
-
-    
-class LinearTrack(Track):
-     def __init__(self, start_time, start_freq, total_power, event, track, band, max_time, max_freq, field):
-        super().__init__(start_time, start_freq, event, track, band)
-        self.track_type = "Linear"
-
-        start_energy = sc.freq_to_energy(start_freq, field)
-        self.slope = sc.df_dt( start_energy, field, total_power)
-
-        if self.slope*max_time < max_freq:
-            self.end_freq = self.slope*max_time + start_freq
-            self.end_time = max_time
-        else:
-            self.end_freq = max_freq
-            self.end_time = (max_freq-start_freq)/self.slope
-
-        #print(f"Slope: {self.slope} \n t0: {start_time}, tf: {self.end_time} \n f0: {start_freq}, ff: {self.end_freq}")
+        return band

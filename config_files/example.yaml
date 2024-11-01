@@ -47,7 +47,7 @@ TrackBuilder:
         value: 0.0
     jump_num_max : 3
 
-BandBuilder:
+SideBandBuilder:
     sideband_num: 0
     frac_total_track_power_cut : 0.01
     harmonic_sidebands: True
