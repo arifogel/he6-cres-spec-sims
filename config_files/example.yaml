@@ -3,12 +3,12 @@
 
 Settings:
     rand_seed: 715
-    sim_daq: False #If true will simulate daq and create spec file, if false no need to fill out daq section
+    sim_daq: True #If true will simulate daq and create spec file, if false no need to fill out daq section
 
 Physics:
     events_to_simulate : 100 #if sim_daq==True will instead calculate appropriate event rate for each spec file
     betas_to_simulate : 100
-    beta_rate: 1.5e+4
+    beta_rate: 1.5e+3
     freq_acceptance_low: 18.0e+9
     freq_acceptance_high: 19.1e+9
     energy:
@@ -34,7 +34,7 @@ EventBuilder:
 TrackBuilder:
     start_time:
         distribution: "fixed"
-        value: 0.0
+        value: 0.003
     track_length:
         distribution: "exponential"
         tau: 1.0e-3
@@ -46,6 +46,9 @@ TrackBuilder:
         distribution: "fixed"
         value: 0.0
     jump_num_max : 3
+    voltage_on_time_ms: 0.168
+    voltage_off_time_ms: 4.0
+    voltage_cycle_fractional_offset: 0.1 #Eventually make a distribution?
 
 SideBandBuilder:
     sideband_num: 0
@@ -56,17 +59,22 @@ SideBandBuilder:
 DMTrackBuilder:
     mixer_freq: 17.9e+9
 
-Daq:
-    n_files: 2
-    spec_length: .006
-    freq_bw: 1.2e+9
-    freq_bins: 4096
+DAQ:
+    acq_length: 0.1 #file duration in [s]
+    n_acquisitions: 1 #For N seconds of data per run, TrackBuilder::start_time should be uniformly distributed from 0 to N
+    freq_bw: 2.4e+9
+    freq_bins: 8192
+    n_channels: 2 #Divide freq_bins into n_channel output files, per acquisition
     roach_avg: 2
     roach_inverted_flag: True # this effectively deletes every other file when roach_avg=2
-    requant_gain: 17
-    noise_file_gain: 17 #requant gain that the noise profile was taken with
+    requant_gain: 7
+    noise_file_gain: 7 #requant gain that the noise profile was taken with
     build_labels: False
-    gain_noise_csv_path: "/Users/buzinsky/Builds/spec_sims_SNR/he6-cres-spec-sims/config_files/base_gain_noise.csv"
+    noise_paths: #list of paths to .spec files. If not included or do not exist, default to white noise, constant gain
+         - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2024-10-04-19-13-35-206_0.spec"
+         - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2024-10-04-19-13-35-206_1.spec"
     spec_prefix: "SNR_dev"
     spec_suffix: "spec"
-    threshold_factor: 9
+    threshold_factor: 7
+    vaunix_bin: 301.03 #not necessarily perfect tuning to Fourier bin
+    vaunix_power_db: -1

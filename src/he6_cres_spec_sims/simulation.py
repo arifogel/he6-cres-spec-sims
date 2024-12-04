@@ -8,10 +8,10 @@ and saved to a .csv and run them through the DAQ, as it is the calculation of th
 
 The general approach is that pandas dataframes, each row describing a single CRES data object (event, segment,
   band, or track), are passed between the blocks, each block adding complexity to the simulation.
- This general structure is broken by the last classe (Daq) which (optionally) creates the binary .spec(k) file
+ This general structure is broken by the last class (DAQ) which (optionally) creates the binary .spec(k) file
 output. This .spec(k) file can then be fed into Katydid just as real data would be.
 
-Classes contained in module: 
+Classes contained in module:
 
     * Simulation
     * Results
@@ -71,7 +71,7 @@ class Simulation:
         daq = sim_blocks.DAQ(self.config)
         specbuilder = sim_blocks.SpecBuilder(self.config, self.config_path)
 
-        # Simulate the action of the Daq on the loaded dmtracks.
+        # Simulate the action of the DAQ on the loaded dmtracks.
         spec_array = daq.run(results.dmtracks)
         specbuilder.run(spec_array)
 

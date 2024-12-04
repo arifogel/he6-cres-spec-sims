@@ -6,7 +6,7 @@ class BaseDistribution(ABC):
     """ Abstract Base Class for random distribution generator. Child classes need to have generate()
     """
     def set_random_engine(self, rng):
-       self.rng = rng 
+       self.rng = rng
 
     def inverse_cdf_helper(self, pdf, xMin, xMax, N, **kwargs):
         # Function which takes in a PDF, an xRange over which the PDF is defined, and an interpolation factor

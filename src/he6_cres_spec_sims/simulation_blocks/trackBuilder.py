@@ -59,8 +59,13 @@ class TrackBuilder:
             max_freq = self.config.physics.freq_acceptance_high
 
             #TODO maybe this should be a different variable in the config... or maybe just renamed
-            trap_on_time = self.config.daq.spec_length if self.config.daq.spec_length else float('inf')
-            end_time = min(trap_on_time, scatter_time)
+            trap_on_time = np.inf
+            if self.config.trackbuilder.voltage_off_time_ms:
+                trap_on_time = self.config.trackbuilder.voltage_off_time_ms * 1e-3
+
+            ###XXX this is bah-roken
+            #end_time = min(trap_on_time, scatter_time)
+            end_time = event["time_start"] + 30.2e-3
 
             #list of band objects (to be added to bands list)
             event_main_bands = []
@@ -85,7 +90,7 @@ class TrackBuilder:
                     event_main_bands.append(band)
 
                     tracks[-1]["freq_stop"] = freq
-                    tracks[-1]["time_stop"] = t
+                    tracks[-1]["time_stop"] = t + 3e-3
                     tracks[-1]["energy_stop"] = sc.freq_to_energy(freq, tracks[-1]["b_avg"])
                     tracks[-1]["track_num"] = track_num
 

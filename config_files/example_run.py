@@ -28,8 +28,8 @@ base_config_path = config_dir + "/example.yaml"
 experiment_params = {
     "experiment_name": "ne_051424",
     "base_config_path": base_config_path,
-    "events_to_simulate": 100,
-    "betas_to_simulate": 100,
+    "events_to_simulate": 10,
+    "betas_to_simulate": 10,
     "isotope": "Ne19",
     "rand_seeds": rand_seeds,
     "fields_T" : fields.tolist(),

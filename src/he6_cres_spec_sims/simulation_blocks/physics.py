@@ -87,4 +87,4 @@ class Physics:
         beta_rate = self.config.physics.beta_rate
         cres_ratio = self.fraction_of_spectrum
         cres_rate = beta_rate*cres_ratio
-        return cres_rate*self.config.daq.n_files*self.config.daq.spec_length
+        return cres_rate*self.config.daq.n_acquisitions*self.config.daq.acq_length
