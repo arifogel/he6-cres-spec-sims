@@ -100,7 +100,7 @@ class DAQ:
                     if self.config.daq.spec_suffix == "spec":
                         self.write_to_spec(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel])
                     elif self.config.daq.spec_suffix == "speck":
-                        self.write_to_speck(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel])
+                        self.write_to_speck(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel], channel)
                     else:
                         raise ValueError('Invalid spec_suffix: spec || speck')
 
@@ -238,9 +238,10 @@ class DAQ:
         noise_array += self.config.dist_interface.rng.normal(size=array_size)
 
         # Want to scale so that mean power agrees with config (based on Chi-Squared k=2 for unsummed bins)
-        noise_array *= np.sqrt(self.noise_mean / 2.)
-        # Scale by noise power.
-        noise_array *= noise_scaling / 3
+        tau_noise = 1./np.log(1 + 1./ self.noise_mean)
+        noise_array *= np.sqrt(tau_noise /  2.)
+        # Scale by noise power. XXXXX WHAT IS THIS 3?????? AAAAAAAAAAAAAAAA
+        noise_array *= noise_scaling# / 3
 
         return noise_array
 
@@ -349,13 +350,21 @@ class DAQ:
         # Instead of generating 1s of noise for each frequency bin, use central limit theorem for mean
         # power in each bin. Sum of N Chi-squared (k=4,2) depending on if summed or not
 
-        thresholds = self.noise_mean
+        means = self.noise_mean
         # DOF = 2 when summing off (True), 4 when summing on (false)
         kDOF = 2*( 2 - int(self.config.daq.roach_inverted_flag))
+        #number of slices used in average for zero-suppression thresholding. Tends to be slow to use 146,484. 10k good enough in practice
+        nSlicesThresholding = 10000
         # CLT: sigma of sum = sigma(Chi-squared) / sqrt(N)
-        sigma_thresholds = np.sqrt(2. / (kDOF * self.slices_in_spec))
-        thresholds *= self.config.dist_interface.rng.normal(1, sigma_thresholds, size=self.config.daq.freq_bins)
+        sigma_thresholds = np.sqrt(2. / (kDOF * nSlicesThresholding))
+        #Add some noise to the mean based on the number of samples (average over previous second)
+        means *= self.config.dist_interface.rng.normal(1, sigma_thresholds, size=self.config.daq.freq_bins)
+
+        # use tau from Non-Exponential noise doc: https://drive.google.com/file/d/10EGOZGXkmiXHXLeyHQ1qnNcc_HK8FPxj/view
+        #thresholds = means
+        thresholds = 1. / np.log(1. + 1./means)
         thresholds *= self.config.daq.threshold_factor
+        thresholds = np.clip(thresholds, 1,None)
         return thresholds
 
     def add_high_power_point(self, frequency_bin):
@@ -368,7 +377,7 @@ class DAQ:
 
         return [aTens, aOnes]
 
-    def write_to_speck(self, spec_array, speck_file_path):
+    def write_to_speck(self, spec_array, speck_file_path, channel):
         """
         Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
         worth of data.
@@ -386,17 +395,23 @@ class DAQ:
 
         data = np.array([])
 
+        #initial index (e.g. 0 or 4096 for channels 0,1) in thresholds to compare to
+        jThreshold0 = channel * freq_bins_in_spec
+
         # Pass "ab" to append to a binary file
         with open(speck_file_path, "ab") as speck_file:
             for s in range(slices_in_spec):
                 data = np.append(data, header)
                 for j in range(freq_bins_in_spec):
-                    if int(spec_array[s][j]) > self.thresholds[j]:
+                    if int(spec_array[s][j]) > self.thresholds[jThreshold0 + j]:
                         data = np.append(data, self.add_high_power_point(j))
                         data = np.append(data, spec_array[s][j])
                 data = np.append(data, footer)
 
             data = data.flatten().astype("uint8")
             data.tofile(speck_file)
+
+        #fractionHighPowerPoints =  (len(data) - (len(header) + len(footer))  * slices_in_spec)  / (slices_in_spec * freq_bins_in_spec)
+        #print("Fraction passing 0-supp: ",fractionHighPowerPoints)
 
         return None
