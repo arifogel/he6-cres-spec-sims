@@ -187,16 +187,18 @@ class DAQ:
         dt = t[1] - t[0]
         #TODO: it is unclear how the high-frequency phase of the vaunix is correlated across pulses.
         # Should/ could set to random [0,2 pi]. Unobservable without time-domain or complex data. Punt for now
-        #XXX need to set vaunix power correctly, so that distributions look the same at -1 dB
-        # modulus creates periodic vaunix pulse. "%" operator does work for floats
 
-        #XXX: vaunix power scaling given the axolotl controls (power in dB)
-        reference_power = 1e-14 #power of vaunix at 0 dB
+        # vaunix power scaling given the axolotl controls (power in dB)
+        # Nick found this by setting voltage_off_time = 0, producing a spectrogram.
+        # From https://drive.google.com/file/d/197czYZ2x9wSeNMNPTpIlJNUG2gTmIewV/view?usp=sharing (slide 11)
+        # we should get an average power in the spectrogram of 98.3 at input of -1 dB. Scale reference power accordingly
+        reference_power = 9.494e-13
         voltage = np.sqrt(reference_power * self.antenna_z) * 10**(self.config.daq.vaunix_power_db / 20.)
         phaseOffset = self.config.trackbuilder.voltage_cycle_fractional_offset
         tOn = self.config.trackbuilder.voltage_on_time_ms * 1e-3
         tOff = self.config.trackbuilder.voltage_off_time_ms * 1e-3
         tPeriod = tOn + tOff
+        # modulus creates periodic vaunix pulse. "%" operator does work for floats
         vaunix_time_series = ((t-phaseOffset*tPeriod)%tPeriod < tOn) * voltage * np.sin(2*np.pi * fVaunix*t)
 
         return vaunix_time_series.reshape((num_slices, self.pts_per_fft)).transpose()
