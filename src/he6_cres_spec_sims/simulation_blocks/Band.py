@@ -21,7 +21,7 @@ class Band:
     def set_power(self, power):
         self.power = power
         return self
-    
+
     def set_band(self, band):
         self.band = band
         return self
@@ -30,18 +30,18 @@ class Band:
         self.start_freq += shift
         self.end_freq += shift
         return self
-    
+
     def copy(self):
         return Band(self.start_freq, self.start_time,self.event,self.track,self.band,self.power,self.end_freq,
                           self.end_time, self.band_type)
-    
+
     def __repr__(self):
         return f"{self.band_type} Track"
-    
+
     def __str__(self):
         return f"{self.band_type} Track \n Event: {self.event} \n Track: {self.track} \n Band: {self.band}"
 
-    
+
 class LinearBand(Band):
      def __init__(self, start_time, start_freq, total_power, event, track, band, max_time, max_freq, field):
         super().__init__(start_time, start_freq, event, track, band)

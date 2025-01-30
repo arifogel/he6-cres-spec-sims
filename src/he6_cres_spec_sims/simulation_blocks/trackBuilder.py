@@ -25,7 +25,7 @@ class TrackBuilder:
 
         self.verbosity = self.config.trackbuilder.verbose
         print(self.config.trackbuilder.verbose)
-    
+
     def run(self, trapped_event_df):
         """
         Builds scattered tracks for each event.
@@ -83,7 +83,7 @@ class TrackBuilder:
                 t, freq, field = tracks[-1]["time_start"], tracks[-1]["freq_start"], tracks[-1]["b_avg"]
                 track_radiated_power_tot = sc.power_larmor(field, freq)
                 while (t < end_time) and (freq < max_freq):
-                    
+
                     band = self.create_band(t, freq, track_radiated_power_tot, end_time, max_freq, event_index,
                                                    jump_num, track_num, field)
                     t, freq = band.end_time, band.end_freq
@@ -102,7 +102,7 @@ class TrackBuilder:
                     tracks_list.append(tracks[-1].values.tolist())
 
                 # break out of loop if this track reached end of trap on time
-                if t >= trap_on_time: break 
+                if t >= trap_on_time: break
 
                 new_track = self.scatter(tracks[-1])
 
@@ -115,18 +115,18 @@ class TrackBuilder:
                     jump_num += 1
                     scatter_time = new_track["time_start"] + self.track_length_distribution.generate()
                     end_time = (trap_on_time, scatter_time) [scatter_time<trap_on_time]
-                else: 
+                else:
                     is_trapped=False
 
             bands.append(event_main_bands)
 
-        # TODO there may be a more elegant way to update the columns... but this works for now     
+        # TODO there may be a more elegant way to update the columns... but this works for now
         columns = np.append(trapped_event_df.columns.to_numpy(), ["time_start","freq_start","time_stop"])
         tracks_df = pd.DataFrame(tracks_list, columns=columns)
-        
+
 
         return tracks_df, bands
-    
+
     def scatter(self, event):
         """Creates Scattered track from initial event conditions.
         """
@@ -249,7 +249,7 @@ class TrackBuilder:
         df["track_power"] = track_power
 
         return df
-    
+
     def create_band(self, time, freq, power, max_time, max_freq, event_num, track_num, band_num, b_avg):
         '''
         This function creates a band object for a given time and frequency. Currently only check that we are within
@@ -259,12 +259,12 @@ class TrackBuilder:
 
         # set different ranges of frequencies where different things can happen, the largest range is normal linear
         # tracks, but there can be cutoff regions, field slewing regions, etc where shape and slope changes
-        
+
         # TODO currently code is creating events outside of physics frequency range... this buffer is a bandaid on
         # this problem which I believe is from the physics part of the code, bandaiding so I can continue debugging
         # this code...
         linear_range = [self.config.physics.freq_acceptance_low-0.1e9, self.config.physics.freq_acceptance_high]
-        
+
         if linear_range[0] <= freq < linear_range[1]:
             band = LinearBand(time, freq, power, event_num, track_num, band_num, max_time, max_freq, b_avg)
 
