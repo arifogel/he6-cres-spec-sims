@@ -2,8 +2,10 @@ from scipy import interpolate
 import pandas as pd
 import numpy as np
 from time import process_time
+
 import matplotlib.pyplot as plt
 
+import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
 from he6_cres_spec_sims.constants import *
 
 class DAQ:
@@ -51,6 +53,8 @@ class DAQ:
         # We call it for both spec and speck, so that the rng is called the same for each, and dmtracks are the same
         self.thresholds = self.set_thresholds()
 
+        self.ExB = exb.ExB(self.config.trackbuilder.voltage_off_time_ms/1000., self.config.trackbuilder.voltage_on_time_ms/1000., self.config.trackbuilder.voltage_fractional_offset)
+
     def run(self, downmixed_tracks_df):
         """
         This function is responsible for building out the spec files and calling the below methods.
@@ -82,7 +86,7 @@ class DAQ:
                 # LNA gain of 67dB
                 #TODO: make this a function of freq. This should be improved (different sideband handling), etc.
                 #spec_array *= np.sqrt(self.gain_func(self.freq_axis) * requant_gain_scaling * 5e6)
-                spec_array *= np.sqrt( requant_gain_scaling * 5e6)
+                spec_array *= np.sqrt( requant_gain_scaling * 5e6) * 10
 
                 spec_array += self.get_noise_array(num_slices)
 
@@ -129,15 +133,11 @@ class DAQ:
 
         # shape of signal_alive_condition: num_tracks
         signal_alive_condition = (
-             (self.tracks["time_start"] <= slice_stop_time)
-            & (self.tracks["time_stop"] >= slice_start_time)
+             (self.tracks["start_time"] <= slice_stop_time)
+            & (self.tracks["end_time"] >= slice_start_time)
         )
 
         eligible_tracks = self.tracks[signal_alive_condition]
-        #print(eligible_tracks)
-        #print("Slice times:")
-        #print(slice_start_time)
-        #print(slice_stop_time)
 
         # Sum all signals in bandwidth to get total (CRES) time-series, to be FFT'ed
         # The factor of 2 is needed because the instantaneous frequency is the derivative of the phase
@@ -146,27 +146,22 @@ class DAQ:
 
         for track_index, track in eligible_tracks.iterrows():
             # TODO: Put back in time-dependence of amplitudes. Want to add in frequency-dependence too
-            band_power = track["band_power_start"]
+            band_power = track["start_band_power"]
             track["slope"] = 1e9
-            #track["freq_start"] = 408.441218205143e6
-            track["time_stop"] = track["time_start"] + 10e-3
 
             # Slice object - selects the time indices in which the track is active
-            track_mask = slice(max(time_to_index(track["time_start"]), 0), time_to_index(track["time_stop"]), 1)
+            track_mask = slice(max(time_to_index(track["start_time"]), 0), time_to_index(track["end_time"]), 1)
 
-            track_phase[track_mask] = 2 * PI * track["freq_start"] * (t[track_mask]-track["time_start"])
-            track_phase[track_mask] += 2 * PI * track["slope"] / 2 * (t[track_mask]-track["time_start"])**2
+            track_phase[track_mask] = 2 * PI * track["start_freq"] * (t[track_mask]-track["start_time"])
+            track_phase[track_mask] += 2 * PI * track["slope"] / 2 * (t[track_mask]-track["start_time"])**2
 
             track_phase[track_mask] += track["phi_0"]
 
-            # Should this be sin x or e^ix?
+            # Should this be sin x or e^ix? XXXXXX
             band_power = 5e-14
             voltage = np.sqrt(band_power * self.antenna_z)
             signal_time_series[track_mask] += voltage * np.sin( track_phase[track_mask])
             track_phase[track_mask] = 0
-            #plt.plot(signal_time_series)
-            #plt.show()
-            #break
 
         return signal_time_series.reshape((num_slices, self.pts_per_fft)).transpose()
 
@@ -180,13 +175,7 @@ class DAQ:
         num_slices = stop_slice - start_slice
 
         t = np.linspace(slice_start_time, slice_stop_time, self.pts_per_fft * num_slices )
-        tVoltageON = self.config.trackbuilder.voltage_off_time_ms / 1000. #convert to [s]
-        tVoltageOFF = self.config.trackbuilder.voltage_on_time_ms / 1000.
         fVaunix = self.config.daq.vaunix_bin * self.config.daq.freq_bw / self.config.daq.freq_bins
-        tVoltagePeriod = tVoltageON + tVoltageOFF
-        dt = t[1] - t[0]
-        #TODO: it is unclear how the high-frequency phase of the vaunix is correlated across pulses.
-        # Should/ could set to random [0,2 pi]. Unobservable without time-domain or complex data. Punt for now
 
         # vaunix power scaling given the axolotl controls (power in dB)
         # Nick found this by setting voltage_off_time = 0, producing a spectrogram.
@@ -194,12 +183,8 @@ class DAQ:
         # we should get an average power in the spectrogram of 98.3 at input of -1 dB. Scale reference power accordingly
         reference_power = 9.494e-13
         voltage = np.sqrt(reference_power * self.antenna_z) * 10**(self.config.daq.vaunix_power_db / 20.)
-        phaseOffset = self.config.trackbuilder.voltage_cycle_fractional_offset
-        tOn = self.config.trackbuilder.voltage_on_time_ms * 1e-3
-        tOff = self.config.trackbuilder.voltage_off_time_ms * 1e-3
-        tPeriod = tOn + tOff
         # modulus creates periodic vaunix pulse. "%" operator does work for floats
-        vaunix_time_series = ((t-phaseOffset*tPeriod)%tPeriod < tOn) * voltage * np.sin(2*np.pi * fVaunix*t)
+        vaunix_time_series =  voltage * self.ExB.vaunix_time_series(t, fVaunix)
 
         return vaunix_time_series.reshape((num_slices, self.pts_per_fft)).transpose()
 

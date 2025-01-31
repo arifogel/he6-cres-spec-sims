@@ -1,5 +1,6 @@
 from .eventBuilder import *
 import he6_cres_spec_sims.spec_tools.spec_calc.power_calc as pc
+import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
 from .Band import *
 
 class TrackBuilder:
@@ -23,6 +24,8 @@ class TrackBuilder:
         # distribution of start times [s]
         self.start_time_distribution = config.dist_interface.get_distribution(self.config.trackbuilder.start_time)
 
+        self.ExB = exb.ExB(self.config.trackbuilder.voltage_off_time_ms/1000., self.config.trackbuilder.voltage_on_time_ms/1000., self.config.trackbuilder.voltage_fractional_offset)
+
         self.verbosity = self.config.trackbuilder.verbose
         print(self.config.trackbuilder.verbose)
 
@@ -32,8 +35,10 @@ class TrackBuilder:
         """
         print("~~~~~~~~~~~~TrackBuilder Block~~~~~~~~~~~~~~\n")
         # Empty list to be filled with tracks.
-        tracks_list = []
         bands = []
+        tracks_list = []
+
+
         #create tracks for every event
         for event_index, event in trapped_event_df.iterrows():
             if event_index % 25 == 0:
@@ -42,88 +47,73 @@ class TrackBuilder:
             # Fill the event with computationally intensive properties.
             event = self.fill_in_properties(event)
 
-            event["time_start"] = self.start_time_distribution.generate()
-            event["freq_start"] = event["avg_cycl_freq"]
+            # Assign track 0 of event with a birth time.
+            event["start_time"] = self.start_time_distribution.generate()
 
-            # Assign track 0 of event with a scatter time.
-            track_duration = self.track_length_distribution.generate()
-            scatter_time = event["time_start"] + track_duration
-
-            # Begin with trapped beta (track 0 of event).
             tracks = [event]
-            is_trapped = True
-            jump_num = 0
-            track_num = 0
-
-            #TODO this may need to be more nuanced to account for lower sidebands
-            max_freq = self.config.physics.freq_acceptance_high
-
-            #TODO maybe this should be a different variable in the config... or maybe just renamed
-            trap_on_time = np.inf
-            if self.config.trackbuilder.voltage_off_time_ms:
-                trap_on_time = self.config.trackbuilder.voltage_off_time_ms * 1e-3
-
-            ###XXX this is bah-roken
-            #end_time = min(trap_on_time, scatter_time)
-            end_time = event["time_start"] + 30.2e-3
 
             #list of band objects (to be added to bands list)
             event_main_bands = []
 
-            '''
-            Track building loop:
-            Basic idea is we have 2 while loops: one for scattering, and one for frequency/time dependent bands
-            The reason for this is the physical attributes of an event change after a scatter but dont for the other
-            features handled by freq/time dependent features (this is not strictly true but close enough for us)
-            '''
-            # TODO: we need to add something to better handle ExB turning on. not sure if that should be treated like a
-            # scatter or not.
-            while is_trapped and jump_num<=self.config.trackbuilder.jump_num_max:
-                if self.verbosity == True: print(f"Event {event_index}, Jump {jump_num}")
-                t, freq, field = tracks[-1]["time_start"], tracks[-1]["freq_start"], tracks[-1]["b_avg"]
-                track_radiated_power_tot = sc.power_larmor(field, freq)
-                while (t < end_time) and (freq < max_freq):
+            max_freq = self.config.physics.freq_acceptance_high
 
-                    band = self.create_band(t, freq, track_radiated_power_tot, end_time, max_freq, event_index,
-                                                   jump_num, track_num, field)
-                    t, freq = band.end_time, band.end_freq
-                    event_main_bands.append(band)
+            #Randomly distribute events among N acquisitions as an integer between [0,N-1] (to be assigned to all tracks in event)
+            #https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.integers.html
+            acq_num = self.config.dist_interface.rng.integers(0, self.config.daq.n_acquisitions, dtype=int, endpoint=False)
+            print("Acquisition Number: ", acq_num)
 
-                    tracks[-1]["freq_stop"] = freq
-                    tracks[-1]["time_stop"] = t + 3e-3
-                    tracks[-1]["energy_stop"] = sc.freq_to_energy(freq, tracks[-1]["b_avg"])
-                    tracks[-1]["track_num"] = track_num
+            #Time at which the trap next empties or the current file acquisition ends
+            #Corresponds to the max end time of the event, unless it scatters out or leaves bandwidth
+            time_next_exb_sweep = min(self.ExB.next_empty(event["start_time"]), self.config.daq.acq_length)
 
-                    new_track = tracks[-1].copy()
-                    new_track["time_start"] = t
-                    new_track["freq_start"] = freq
-                    tracks.append(new_track)
-                    track_num += 1
-                    tracks_list.append(tracks[-1].values.tolist())
+            # number of max tracks per event
+            nMaxTracks = self.config.trackbuilder.jump_num_max + 1
 
-                # break out of loop if this track reached end of trap on time
-                if t >= trap_on_time: break
+            for track_num in range(nMaxTracks):
+                #tracks[track_num] is final "known" trapped track in the event, currently (before next are computed)
+                tracks[track_num]["track_num"] = track_num
+                tracks[track_num]["acq_num"] = acq_num
+                tracks[track_num]["trap_acq_num"] = self.ExB.trap_cycle_index(tracks[track_num]["start_time"])
+                tracks[track_num]["start_time_in_trap_acq"] = self.ExB.time_in_trap_acq(tracks[track_num]["start_time"])
 
-                new_track = self.scatter(tracks[-1])
+                tracks[track_num]["track_length"] = self.track_length_distribution.generate()
+                tracks[track_num]["end_time"] =  tracks[track_num]["start_time"] + tracks[track_num]["track_length"]
 
-                if self.eventbuilder.trap_condition(new_track) == True:
-                    #TODO there is almost certainly a better way to pass/grab the new track info
-                    new_track = next(self.fill_in_properties(new_track).iterrows())[1]
-                    new_track["time_start"] = t
-                    new_track["freq_start"] = new_track["avg_cycl_freq"]
-                    tracks.append(new_track)
-                    jump_num += 1
-                    scatter_time = new_track["time_start"] + self.track_length_distribution.generate()
-                    end_time = (trap_on_time, scatter_time) [scatter_time<trap_on_time]
+                #Determine whether scatter time or exb happens sooner, adjust end_time and track_length as necessary
+                #Recompute track_length for tracks that are cleared out by ExB as now track_length != scatter_time
+                final_track = (tracks[track_num]["end_time"] >= time_next_exb_sweep)
+                tracks[track_num]["end_time"] =  np.clip(tracks[track_num]["end_time"], None, time_next_exb_sweep)
+                tracks[track_num]["track_length"] = tracks[track_num]["end_time"] - tracks[track_num]["start_time"]
+
+                # Given the end time, assign the end frequency, energy
+                track_radiated_power_tot = sc.power_larmor(tracks[track_num]["b_avg"], tracks[track_num]["start_freq"])
+                band = self.create_band(tracks[track_num]["start_time"], tracks[track_num]["start_freq"], track_radiated_power_tot, tracks[track_num]["end_time"], max_freq, event_index, track_num-1, track_num, tracks[track_num]["b_avg"])
+                event_main_bands.append(band)
+
+                #Modify track end properties based on integration
+                tracks[track_num]["end_freq"] = band.end_freq
+                tracks[track_num]["end_time"] = band.end_time
+                tracks[track_num]["end_energy"] = sc.freq_to_energy(band.end_freq, tracks[track_num]["b_avg"])
+
+                #More efficient to add new tracks to list instead of directly to DataFrame
+                tracks_list.append(tracks[track_num].values.tolist())
+
+                if final_track:
+                    break
                 else:
-                    is_trapped=False
+                    new_track = self.scatter(tracks[track_num]) # if we are not cleared by the ExB, compute next scatter
+                    if not self.eventbuilder.trap_condition(new_track): #confirm that next scatter is still magnetically trapped
+                        break
+                    filled_new_track = self.fill_in_properties(new_track) #fill in the "expensive" properties of the next track (b_avg, axial_freq, etc.) if it is trapped
+                    #Assign start_time of next time as end_time of previous track
+                    #Note we do not need to do this for frequencies, which are computed by b_avg, given pitch angle. Start energy handled in scatter(). Do not override!
+                    filled_new_track["start_time"] = band.end_time
+                    filled_new_track = pd.Series(filled_new_track.squeeze()) # converts new_track from a pandas DataFrame to a pandas Series (table vs. single row)
+                    tracks.append(filled_new_track)
 
             bands.append(event_main_bands)
 
-        # TODO there may be a more elegant way to update the columns... but this works for now
-        columns = np.append(trapped_event_df.columns.to_numpy(), ["time_start","freq_start","time_stop"])
-        tracks_df = pd.DataFrame(tracks_list, columns=columns)
-
+        tracks_df = pd.DataFrame(tracks_list, columns=trapped_event_df.columns)
 
         return tracks_df, bands
 
@@ -137,7 +127,7 @@ class TrackBuilder:
         zpos = 0
         center_theta = event["center_theta"]
         phi_dir = event["initial_phi_dir"]
-        energy_stop = event["energy_stop"]
+        energy_stop = event["end_energy"]
         event_num = event["event_num"]
         beta_num = event["beta_num"]
 
@@ -221,28 +211,23 @@ class TrackBuilder:
         )
 
         track_radiated_power_tot = sc.power_larmor(main_field, avg_cycl_freq)
-
-        # slope = sc.df_dt( df["energy"], self.config.eventbuilder.main_field, track_radiated_power)
-
+        slope = sc.df_dt( df["energy"], self.config.eventbuilder.main_field, track_radiated_power_tot)
         energy_stop = ( df["energy"] - track_radiated_power_tot * df["track_length"] * J_TO_EV)
 
-        # Replace negative energies if energy_stop is a float or pandas series
-        if isinstance(energy_stop, pd.core.series.Series):
-            energy_stop[energy_stop < 0]  = 1e-10
-        elif energy_stop < 0:
-            energy_stop = 1e-10
+        # Replace negative energies for energy_stop
+        energy_stop = np.clip(energy_stop, 1e-10, None)
 
         freq_stop = sc.avg_cycl_freq( energy_stop, df["center_theta"], df["rho_center"], trap_profile)
-        slope = (freq_stop - avg_cycl_freq) / df["track_length"]
+        #slope = (freq_stop - avg_cycl_freq) / df["track_length"]
 
         track_power = track_radiated_power_te11 / 2
 
         df["axial_freq"] = axial_freq
-        df["avg_cycl_freq"] = avg_cycl_freq
+        df["start_freq"] = avg_cycl_freq
         df["b_avg"] = b_avg
         df["grad_b_freq"] = grad_b_freq
-        df["freq_stop"] = freq_stop
-        df["energy_stop"] = energy_stop
+        df["end_freq"] = freq_stop
+        df["end_energy"] = energy_stop
         df["zmax"] = zmax
         df["mod_index"] = mod_index
         df["slope"] = slope
@@ -256,13 +241,11 @@ class TrackBuilder:
         track length.
         TODO add more band options
         '''
-
         # set different ranges of frequencies where different things can happen, the largest range is normal linear
         # tracks, but there can be cutoff regions, field slewing regions, etc where shape and slope changes
 
-        # TODO currently code is creating events outside of physics frequency range... this buffer is a bandaid on
-        # this problem which I believe is from the physics part of the code, bandaiding so I can continue debugging
-        # this code...
+        # WARNING: We do create events outside of the RF bandwidth with some buffer (both above and below)
+        # DAQ.py must ensure that such events are written to spectrograms appropriately, so that aliasing is avoided
         linear_range = [self.config.physics.freq_acceptance_low-0.1e9, self.config.physics.freq_acceptance_high]
 
         if linear_range[0] <= freq < linear_range[1]:

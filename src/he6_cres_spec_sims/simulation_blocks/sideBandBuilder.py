@@ -27,7 +27,7 @@ class SideBandBuilder:
                 sideband_amplitudes = sc.sideband_calc(
                     row["energy"],
                     row["rho_center"],
-                    row["avg_cycl_freq"],
+                    row["start_freq"],
                     row["axial_freq"],
                     row["zmax"],
                     self.config.trap_profile,
@@ -39,7 +39,7 @@ class SideBandBuilder:
                     row["energy"],
                     row["center_theta"],
                     row["rho_center"],
-                    row["avg_cycl_freq"],
+                    row["start_freq"],
                     row["axial_freq"],
                     row["zmax"],
                     self.config.trap_profile,
@@ -51,28 +51,26 @@ class SideBandBuilder:
             row_copy = row.copy()
             sidebands= []
             for i, band_num in enumerate(range(-sideband_num, sideband_num + 1)):
-
                 if sideband_amplitudes[i][1] < frac_total_track_power_cut:
                     continue
                 else:
-
                     # fill in new avg_cycl_freq, band_power, band_num
                     # TODO: properly determine band power stop.
-                    row_copy["avg_cycl_freq"] = sideband_amplitudes[i][0]
+                    row_copy["start_freq"] = sideband_amplitudes[i][0]
                     # Note that the sideband amplitudes need to be squared to give power.
-                    row_copy["band_power_start"] = sideband_amplitudes[i][1] ** 2 * row.track_power
-                    row_copy["band_power_stop"] = row_copy["band_power_start"]
+                    row_copy["start_band_power"] = sideband_amplitudes[i][1] ** 2 * row.track_power
+                    row_copy["end_band_power"] = row_copy["start_band_power"]
                     row_copy["band_num"] = band_num
 
                     # append to band_list, as it's better to grow a list than a df
                     band_list.append(row_copy.tolist())
 
                     if band_num==0:
-                        bands[int(row_copy["event_num"])][int(row_copy["track_num"])].set_power(row_copy["band_power_start"])
+                        bands[int(row_copy["event_num"])][int(row_copy["track_num"])].set_power(row_copy["start_band_power"])
 
                     else:
                         band_copy = bands[int(row_copy["event_num"])][int(row_copy["track_num"])].copy()
-                        freq_shift = row_copy["avg_cycl_freq"] - row["avg_cycl_freq"]
+                        freq_shift = row_copy["start_freq"] - row["start_freq"]
                         new_track = band_copy.shift_frequency(freq_shift).set_band(band_num)
                         sidebands.append(new_track)
                 bands[int(row_copy["event_num"])] += sidebands

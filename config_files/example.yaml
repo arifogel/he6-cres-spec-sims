@@ -48,7 +48,7 @@ TrackBuilder:
     jump_num_max : 3
     voltage_on_time_ms: 0.168
     voltage_off_time_ms: 4.0
-    voltage_cycle_fractional_offset: 0.1 #Eventually make a distribution?
+    voltage_fractional_offset: 0.1 #Eventually make a distribution?
 
 SideBandBuilder:
     sideband_num: 0
@@ -61,7 +61,7 @@ DMTrackBuilder:
 
 DAQ:
     acq_length: 0.1 #file duration in [s]
-    n_acquisitions: 1 #For N seconds of data per run, TrackBuilder::start_time should be uniformly distributed from 0 to N
+    n_acquisitions: 1 #For N seconds of data per run, TrackBuilder::start_time should be uniformly distributed from 0 to acq_length
     freq_bw: 2.4e+9
     freq_bins: 8192
     n_channels: 2 #Divide freq_bins into n_channel output files, per acquisition
@@ -74,7 +74,7 @@ DAQ:
          - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2024-10-04-19-13-35-206_0.spec"
          - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2024-10-04-19-13-35-206_1.spec"
     spec_prefix: "SNR_dev"
-    spec_suffix: "spec"
+    spec_suffix: "speck"
     threshold_factor: 7
     vaunix_bin: 301.03 #not necessarily perfect tuning to Fourier bin
     vaunix_power_db: -1
