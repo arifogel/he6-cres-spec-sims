@@ -4,6 +4,7 @@ from .beta_decay_distribution import BetaDecayDistribution
 from .dirac_distribution import DiracDistribution
 from .exponential_distribution import ExponentialDistribution
 from .normal_distribution import NormalDistribution
+from .rudd_distribution import RuddDistribution
 from .uniform_distribution import UniformDistribution
 from .uniform_annulus_distribution import UniformAnnulusDistribution
 
@@ -34,6 +35,8 @@ class DistributionInterface:
             dist = ExponentialDistribution()
         elif name == "normal" or name=="gaussian":
             dist = NormalDistribution()
+        elif name == "rudd":
+            dist = RuddDistribution()
         elif name == "uniform":
             dist = UniformDistribution()
         elif name == "uniform_annulus":

@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 from time import process_time
 
-import matplotlib.pyplot as plt
-
 import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
 from he6_cres_spec_sims.constants import *
 
@@ -259,7 +257,6 @@ class DAQ:
 
         #This command takes our nSlices x nFFT array, and groups the nSlice columns into groups of roach_avg and sums over them
         #the -1 is a filler telling numpy to automatically compute the number of "groups", which would be the slices post-summing
-        #return signal_array.reshape(signal_array.shape[0], self.config.daq.roach_avg, -1).sum(axis=2)
         return signal_array.reshape(-1, self.config.daq.roach_avg, signal_array.shape[1]).sum(axis=1)
 
     #################### File Writing Utilities ####################

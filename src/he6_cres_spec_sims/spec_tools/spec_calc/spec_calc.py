@@ -604,7 +604,6 @@ def power_larmor(field, frequency):
     energy = freq_to_energy(frequency, field)
     r_c = cyc_radius(energy, field, 90)
     beta = velocity(energy) / C
-    p = gamma(energy) * M * velocity(energy)
 
     power_larmor = (2 / 3 * Q**2 * C * beta**4 * gamma(energy) ** 4) / (
         4 * PI * EPS_0 * r_c**2
@@ -617,7 +616,6 @@ def power_larmor_e(field, energy):
 
     r_c = cyc_radius(energy, field, 90)
     beta = velocity(energy) / C
-    p = gamma(energy) * M * velocity(energy)
 
     power_larmor = (2 / 3 * Q**2 * C * beta**4 * gamma(energy) ** 4) / (
         4 * PI * EPS_0 * r_c**2
