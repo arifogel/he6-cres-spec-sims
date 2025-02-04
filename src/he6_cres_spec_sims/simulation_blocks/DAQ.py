@@ -28,14 +28,15 @@ class DAQ:
 
         self.antenna_z = 50  # Ohms
 
-        self.slices_in_spec = int( config.daq.acq_length/ self.delta_t / self.config.daq.roach_avg)
+        self.slices_in_roach = int( config.daq.acq_length/ self.delta_t) # num slices in "data" (before averaging/tossing)
+        self.slices_in_spec = int( config.daq.acq_length/ self.delta_t / self.config.daq.roach_avg) # num slices in file (after averaging/tossing)
 
         self.n_acquisitions = self.config.daq.n_acquisitions #number of seconds of data to write
         self.n_channels = self.config.daq.n_channels #1 or 2, for lower/ upper halves of spectrogram
         self.bins = [slice(0,4096), slice(4096,8192)] #which frequency bins to write for each channel
 
         # This block size is used to create chunks of spec file that don't overwhelm the ram.
-        self.slice_block = int(500 * 32768 / config.daq.freq_bins)
+        self.slice_block = int(250 * 32768 / config.daq.freq_bins) * self.config.daq.roach_avg
 
         # Read in .spec files for noise-only reference
         self.noise_mean = np.ones(config.daq.freq_bins, dtype=float)
@@ -71,29 +72,34 @@ class DAQ:
         self.write_empty_files(self.spec_file_paths)
 
         spec_array = np.zeros(shape=(self.slice_block, self.config.daq.freq_bins))
+        initial_packet = 0
 
         for acq in range(self.n_acquisitions):
             print( f"Building spec acquistion {acq}. {self.config.daq.acq_length} s, {self.slices_in_spec} slices.")
             build_file_start = process_time()
             # Iterate by the slice_block until you hit the end of the spec file.
-            for start_slice in np.arange(0, self.slices_in_spec, self.slice_block):
-                stop_slice = min(start_slice + self.slice_block, self.slices_in_spec)
+            for start_slice in np.arange(0, self.slices_in_roach, self.slice_block):
+                stop_slice = min(start_slice + self.slice_block, self.slices_in_roach)
 
                 num_slices = stop_slice - start_slice
                 requant_gain_scaling = 2**self.config.daq.requant_gain
 
+                #dimensions: slices x FFT bins
                 spec_array = self.get_signal_array( acq, start_slice, stop_slice)
                 # LNA gain of 67dB
                 #TODO: make this a function of freq. This should be improved (different sideband handling), etc.
                 #spec_array *= np.sqrt(self.gain_func(self.freq_axis) * requant_gain_scaling * 5e6)
                 spec_array *= np.sqrt( requant_gain_scaling * 5e6) * 10
 
-                spec_array += self.get_noise_array(num_slices)
+                #shape[1] is the number of slices, though by doing it like this, we handle automatically if
+                # roach_inverted_flag=True (so this is number of slices either before or after summing/tossing)
+                spec_array += self.get_noise_array(spec_array.shape[0])
 
                 # Computer Fourier power (magnitude_squared)
                 spec_array = np.abs(spec_array)**2
 
-                spec_array = self.roach_slice_avg(spec_array)
+                if not self.config.daq.roach_inverted_flag:
+                    spec_array = self.roach_slice_sum(spec_array)
 
                 spec_array = np.clip(spec_array, a_min=0, a_max=255)
 
@@ -102,11 +108,14 @@ class DAQ:
                     # self.bins[channel] tells to write frequency bins [0-4095], [4096,8191]
                     # in _0.spec(k) and _1.spec(k) respectively. First ":" indicates write all time slices
                     if self.config.daq.spec_suffix == "spec":
-                        self.write_to_spec(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel])
+                        self.write_to_spec(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel], initial_packet)
                     elif self.config.daq.spec_suffix == "speck":
-                        self.write_to_speck(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel], channel)
+                        self.write_to_speck(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel], initial_packet, channel)
                     else:
                         raise ValueError('Invalid spec_suffix: spec || speck')
+
+                initial_packet += spec_array.shape[0]
+                initial_packet = initial_packet % 2**20
 
             build_file_stop = process_time()
             print( f"Time to build acq {acq}: {build_file_stop- build_file_start:.3f} s \n")
@@ -147,7 +156,6 @@ class DAQ:
         for track_index, track in eligible_tracks.iterrows():
             # TODO: Put back in time-dependence of amplitudes. Want to add in frequency-dependence too
             band_power = track["start_band_power"]
-            track["slope"] = 1e9
 
             # Slice object - selects the time indices in which the track is active
             track_mask = slice(max(time_to_index(track["start_time"]), 0), time_to_index(track["end_time"]), 1)
@@ -157,7 +165,7 @@ class DAQ:
 
             track_phase[track_mask] += track["phi_0"]
 
-            # Should this be sin x or e^ix? XXXXXX
+            #XXXX Fix hardcoded band_power
             band_power = 5e-14
             voltage = np.sqrt(band_power * self.antenna_z)
             signal_time_series[track_mask] += voltage * np.sin( track_phase[track_mask])
@@ -190,14 +198,21 @@ class DAQ:
 
     def get_signal_array(self, acq, start_slice, stop_slice):
         """
-        Build a frequency-domain array of signal (Dimensions = N_FFT Bins x self.slice_block slices)
+        Build a frequency-domain array of signal (Dimensions = some number of slices x FFT bins)
+        The number of slices is usually slice_block. If roach_inverted_flag, it is usually slice_block / roach_avg, except near the end of the spec
         Given signal time-series s(t), convert to frequency domain S(f) via FFT
         Returns frequency-domain (with phase)
         """
         signal_time_series = self.get_signal_time_series(acq, start_slice, stop_slice)
         signal_time_series += self.get_vaunix_time_series(acq, start_slice, stop_slice)
 
-        # shape of signal_time_series: (pts_per_fft, num_slices). Conduct a 1d FFT along axis = 0 (the time axis).
+        #shape of signal_time_series: (pts_per_fft, num_slices). Conduct a 1d FFT along axis = 0 (the time axis).
+        #Avoid taking FFT's of time slices were are going to toss anyways!
+        if self.config.daq.roach_inverted_flag:
+            #Note: We want to keep every daq_roach_avg'th slice in the full data, not the data block
+            slices_to_keep = np.arange(start_slice, stop_slice) % self.config.daq.roach_avg == 0
+            signal_time_series = signal_time_series[:,slices_to_keep]
+
         Y_fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[:self.pts_per_fft // 2]
         return Y_fft.T
 
@@ -227,22 +242,25 @@ class DAQ:
         # Want to scale so that mean power agrees with config (based on Chi-Squared k=2 for unsummed bins)
         tau_noise = 1./np.log(1 + 1./ self.noise_mean)
         noise_array *= np.sqrt(tau_noise /  2.)
-        # Scale by noise power. XXXXX WHAT IS THIS 3?????? AAAAAAAAAAAAAAAA
-        noise_array *= noise_scaling# / 3
+        # Scale by noise power
+        noise_array *= noise_scaling
 
         return noise_array
 
-    def roach_slice_avg(self, signal_array):
-        N = int(self.config.daq.roach_avg)
-        if self.config.daq.roach_inverted_flag == True:
-            result = signal_array[::N]
-        else:
-            if signal_array.shape[0] % 2 == 0:
-                result = signal_array[1::2] + signal_array[::2]
-            else:
-                result = signal_array[1::2] + signal_array[:-1:2]
+    def roach_slice_sum(self, signal_array):
+        #input array dimensions: nSlices x nFFT
+        #WARNING: This breaks if nSlices in the block size is not divisible by roach_avg (i.e. we do incomplete sums over slices)
+        num_slices = signal_array.shape[0]
+        #need to do sum over slices that is divisible by roach_avg
+        if num_slices %  self.config.daq.roach_avg:
+            print("Num slices really should be divisible by roach_avg! Why is it not!? Trimming")
+            num_slices_divisible = num_slices - (num_slices % self.config.daq.roach_avg)
+            signal_array = signal_array[:num_slices_divisible,:] # Trim remainder rows
 
-        return result
+        #This command takes our nSlices x nFFT array, and groups the nSlice columns into groups of roach_avg and sums over them
+        #the -1 is a filler telling numpy to automatically compute the number of "groups", which would be the slices post-summing
+        #return signal_array.reshape(signal_array.shape[0], self.config.daq.roach_avg, -1).sum(axis=2)
+        return signal_array.reshape(-1, self.config.daq.roach_avg, signal_array.shape[1]).sum(axis=1)
 
     #################### File Writing Utilities ####################
 
@@ -310,7 +328,19 @@ class DAQ:
 
         return spec_array
 
-    def write_to_spec(self, spec_array, spec_file_path):
+    def packet_num_base_256(self, packet_num):
+        # We want to write (packet number) to spec(k) file
+        # packet_number (0 - 2^20-1)
+        # Fit in 3 bytes via: 2^16 a[0] + 2^8 a[1] + a[2]
+
+        aOnes = packet_num % 256
+        intermediate = packet_num // 256 #2^8 a[0] + a[1]
+        aTens = intermediate % 256
+        aHunds = intermediate // 256
+        return np.array([aHunds, aTens, aOnes])
+
+
+    def write_to_spec(self, spec_array, spec_file_path, initial_packet):
         """
         Append to an existing spec file. This is necessary because the spec arrays get too large for 1s
         worth of data.
@@ -318,9 +348,14 @@ class DAQ:
         # Make spec file:
         slices_in_spec, freq_bins_in_spec = spec_array.shape
 
-        zero_hdrs = np.zeros((slices_in_spec, 32))
+        #32 is the hardcoded header size, in bytes
+        zero_hdrs = np.zeros((slices_in_spec, 32),dtype=int) #shape = slices x 32
 
-        # Append empty (zero) headers to the spec array.
+        packets = np.arange(initial_packet,initial_packet + slices_in_spec)
+        packets_base256 = self.packet_num_base_256(packets).transpose() #shape = slices x 3
+        zero_hdrs[:,9:12] = packets_base256
+
+        # Append mostly empty headers to the spec array.
         spec_array_hdrs = np.hstack((zero_hdrs, spec_array))
 
         data = spec_array_hdrs.flatten().astype("uint8")
@@ -338,8 +373,11 @@ class DAQ:
         # power in each bin. Sum of N Chi-squared (k=4,2) depending on if summed or not
 
         means = self.noise_mean
-        # DOF = 2 when summing off (True), 4 when summing on (false)
-        kDOF = 2*( 2 - int(self.config.daq.roach_inverted_flag))
+        # DOF = 2 when summing off (inverted_flag == True), 4 when summing on (inverted_flag == False)
+        kDOF = 2
+        if not self.config.daq.roach_inverted_flag:
+            kDOF *= self.config.daq.roach_avg
+
         #number of slices used in average for zero-suppression thresholding. Tends to be slow to use 146,484. 10k good enough in practice
         nSlicesThresholding = 10000
         # CLT: sigma of sum = sigma(Chi-squared) / sqrt(N)
@@ -364,14 +402,14 @@ class DAQ:
 
         return [aTens, aOnes]
 
-    def write_to_speck(self, spec_array, speck_file_path, channel):
+    def write_to_speck(self, spec_array, speck_file_path, initial_packet, channel):
         """
         Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
         worth of data.
         """
         slices_in_spec, freq_bins_in_spec = spec_array.shape
 
-        # Append empty (zero) packet header to data
+        # Append mostly empty packet header to data
         header = np.zeros(32)
 
         # Append empty (zero) footer. 3 zeros signals end of spectrogram slice
@@ -388,6 +426,7 @@ class DAQ:
         # Pass "ab" to append to a binary file
         with open(speck_file_path, "ab") as speck_file:
             for s in range(slices_in_spec):
+                header[9:12] = self.packet_num_base_256(initial_packet + s)
                 data = np.append(data, header)
                 for j in range(freq_bins_in_spec):
                     if int(spec_array[s][j]) > self.thresholds[jThreshold0 + j]:

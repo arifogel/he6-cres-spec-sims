@@ -248,7 +248,9 @@ class TrackBuilder:
         # DAQ.py must ensure that such events are written to spectrograms appropriately, so that aliasing is avoided
         linear_range = [self.config.physics.freq_acceptance_low-0.1e9, self.config.physics.freq_acceptance_high]
 
-        if linear_range[0] <= freq < linear_range[1]:
-            band = LinearBand(time, freq, power, event_num, track_num, band_num, max_time, max_freq, b_avg)
+        if not (linear_range[0] <= freq < linear_range[1]):
+            power = 0
+
+        band = LinearBand(time, freq, power, event_num, track_num, band_num, max_time, max_freq, b_avg)
 
         return band

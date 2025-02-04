@@ -8,9 +8,9 @@ Settings:
 Physics:
     events_to_simulate : 100 #if sim_daq==True will instead calculate appropriate event rate for each spec file
     betas_to_simulate : 100
-    beta_rate: 1.5e+3
+    beta_rate: 1.5e+4
     freq_acceptance_low: 18.0e+9
-    freq_acceptance_high: 19.1e+9
+    freq_acceptance_high: 20.3e+9
     energy:
         distribution: "beta_decay"
         isotope: "He6"
@@ -33,8 +33,9 @@ EventBuilder:
 
 TrackBuilder:
     start_time:
-        distribution: "fixed"
-        value: 0.003
+        distribution: "uniform"
+        low: 0
+        high: 9.0e-2
     track_length:
         distribution: "exponential"
         tau: 1.0e-3
@@ -74,6 +75,7 @@ DAQ:
          - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2024-10-04-19-13-35-206_0.spec"
          - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2024-10-04-19-13-35-206_1.spec"
     spec_prefix: "SNR_dev"
+    #Warning , zero-suppression + roach_inverted_flag=False + roach_avg > 2 is super slow due to thresholds not being set for that case. Just do .spec
     spec_suffix: "speck"
     threshold_factor: 7
     vaunix_bin: 301.03 #not necessarily perfect tuning to Fourier bin
