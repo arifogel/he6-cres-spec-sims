@@ -1,6 +1,7 @@
 from .base_distribution import BaseDistribution
 
 from .beta_decay_distribution import BetaDecayDistribution
+from .cauchy_distribution import CauchyDistribution
 from .dirac_distribution import DiracDistribution
 from .exponential_distribution import ExponentialDistribution
 from .normal_distribution import NormalDistribution
@@ -29,6 +30,8 @@ class DistributionInterface:
 
         if name == "beta_decay":
             dist = BetaDecayDistribution()
+        elif name == "cauchy" or name=="lorentz":
+            dist = CauchyDistribution()
         elif name == "dirac" or name == "fixed":
             dist = DiracDistribution()
         elif name == "exponential":

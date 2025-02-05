@@ -14,8 +14,5 @@ class NormalDistribution(BaseDistribution):
         if "sigma" in yaml_block:
             self.sigma = yaml_block["sigma"]
 
-    def generate(self):
-        return self.value
-
     def generate(self, size=None):
         return self.rng.normal(self.mean, self.sigma, size)
