@@ -102,6 +102,9 @@ class TrackBuilder:
                     break
                 else:
                     new_track = self.scatter(tracks[track_num]) # if we are not cleared by the ExB, compute next scatter
+                    #if we roll low, scatter is elastic, assumed to instantly eject beta
+                    if self.config.dist_interface.rng.uniform(0,1) < self.config.trackbuilder.frac_elastic:
+                        break
                     if not self.eventbuilder.trap_condition(new_track): #confirm that next scatter is still magnetically trapped
                         break
                     filled_new_track = self.fill_in_properties(new_track) #fill in the "expensive" properties of the next track (b_avg, axial_freq, etc.) if it is trapped
@@ -191,7 +194,6 @@ class TrackBuilder:
         # Calculate all relevant track parameters. Order matters here.
         axial_freq = sc.axial_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile)
 
-        # TODO: Make this more accurate as per discussion with RJ.
         b_avg = sc.b_avg( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)
         avg_cycl_freq = sc.energy_to_freq(df["energy"], b_avg)
         grad_b_freq = sc.grad_b_freq( df["energy"], df["center_theta"], df["rho_center"], trap_profile, axial_freq)

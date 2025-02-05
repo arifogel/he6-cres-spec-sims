@@ -46,6 +46,7 @@ TrackBuilder:
     scattering_angle:
         distribution: "fixed"
         value: 0.0
+    frac_elastic: 0.01 #Fraction of scatters that are elastic (instantly escape)
     jump_num_max : 3
     voltage_on_time_ms: 0.168
     voltage_off_time_ms: 4.0

@@ -329,7 +329,8 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
 
-        # See write-ups XXX for more information on this integral
+        # See write-up for more information on this integral
+        #https://drive.google.com/file/d/1OLoIebHWi85fKBwdb-ogjzwD9LblOv0u/view?usp=drive_link
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1]
         # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
@@ -391,7 +392,8 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         # Should optionally pass these in as argument to reuse calculations!
         f_a = axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints)
 
-        # See write-ups XXX for more information on this integral
+        # See write-ups for more information on this integral
+        #https://drive.google.com/file/d/1OLoIebHWi85fKBwdb-ogjzwD9LblOv0u/view?usp=drive_link
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1]
         # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
@@ -442,7 +444,8 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
 
-        # See write-ups XXX for more information on this integral
+        # See write-ups for more information on this integral
+        #https://drive.google.com/file/d/1OLoIebHWi85fKBwdb-ogjzwD9LblOv0u/view?usp=drive_link
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1]
         # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)

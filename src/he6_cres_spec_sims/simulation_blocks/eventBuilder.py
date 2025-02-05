@@ -137,11 +137,6 @@ class EventBuilder:
             "beta_num": beta_num,
             "acq_num": np.nan,
             "trap_acq_num": np.nan,
-            "fraction_of_spectrum": self.physics.fraction_of_spectrum,
-            "energy_accept_high": self.physics.energy_acceptance_high,
-            "energy_accept_low": self.physics.energy_acceptance_low,
-            "gamma_accept_high": sc.gamma(self.physics.energy_acceptance_high),
-            "gamma_accept_low": sc.gamma(self.physics.energy_acceptance_low),
         }
 
         event_df = pd.DataFrame(track_properties, index=[event_num])
