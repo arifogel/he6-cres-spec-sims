@@ -9,8 +9,8 @@ Physics:
     events_to_simulate : 100 #if sim_daq==True will instead calculate appropriate event rate for each spec file
     betas_to_simulate : 100
     beta_rate: 1.5e+4
-    freq_acceptance_low: 18.0e+9
-    freq_acceptance_high: 20.3e+9
+    freq_acceptance_low: 17.0e+9 #Note: this is the "extended bandwidth" corresponding to energies where betas can be born. Decreasing low is more important than increasing high.
+    freq_acceptance_high: 20.8e+9
     energy:
         distribution: "beta_decay"
         isotope: "He6"
@@ -40,9 +40,8 @@ TrackBuilder:
         distribution: "exponential"
         tau: 1.0e-3
     energy_loss:
-        distribution: "normal"
-        mean : 14
-        sigma : 5
+        distribution: "aseev"
+        isotope : "H2"
     scattering_angle:
         distribution: "fixed"
         value: 0.0

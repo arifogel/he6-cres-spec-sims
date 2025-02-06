@@ -1,5 +1,6 @@
 from .base_distribution import BaseDistribution
 
+from .aseev_distribution import AseevDistribution
 from .beta_decay_distribution import BetaDecayDistribution
 from .cauchy_distribution import CauchyDistribution
 from .dirac_distribution import DiracDistribution
@@ -28,7 +29,9 @@ class DistributionInterface:
 
         name = yaml_block["distribution"] # name of distribution from config file
 
-        if name == "beta_decay":
+        if name == "aseev":
+            dist = AseevDistribution()
+        elif name == "beta_decay":
             dist = BetaDecayDistribution()
         elif name == "cauchy" or name=="lorentz":
             dist = CauchyDistribution()

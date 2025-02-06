@@ -239,20 +239,7 @@ class TrackBuilder:
 
     def create_band(self, time, freq, power, max_time, max_freq, event_num, track_num, band_num, b_avg):
         '''
-        This function creates a band object for a given time and frequency. Currently only check that we are within
-        track length.
-        TODO add more band options
+        This function creates a linear band object describing time-frequency evolution
         '''
-        # set different ranges of frequencies where different things can happen, the largest range is normal linear
-        # tracks, but there can be cutoff regions, field slewing regions, etc where shape and slope changes
-
-        # WARNING: We do create events outside of the RF bandwidth with some buffer (both above and below)
-        # DAQ.py must ensure that such events are written to spectrograms appropriately, so that aliasing is avoided
-        linear_range = [self.config.physics.freq_acceptance_low-0.1e9, self.config.physics.freq_acceptance_high]
-
-        if not (linear_range[0] <= freq < linear_range[1]):
-            power = 0
-
-        band = LinearBand(time, freq, power, event_num, track_num, band_num, max_time, max_freq, b_avg)
-
-        return band
+        # DAQ.py applies a frequency-dependent amplitude function to avoid aliasing
+        return LinearBand(time, freq, power, event_num, track_num, band_num, max_time, max_freq, b_avg)
