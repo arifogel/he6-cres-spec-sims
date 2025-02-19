@@ -2,6 +2,8 @@ from scipy import interpolate
 import pandas as pd
 import numpy as np
 from time import process_time
+from scipy.signal import find_peaks
+from scipy.optimize import curve_fit
 
 import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
 from he6_cres_spec_sims.constants import *
@@ -40,19 +42,53 @@ class DAQ:
         self.noise_mean = np.ones(config.daq.freq_bins, dtype=float)
         try:
             for n in range(self.n_channels):
+                #Should we do more than 10k slices read in? Perhaps...
                 self.noise_mean[self.bins[n]] = self.spec_to_array(self.config.daq.noise_paths[n]).mean(axis=0)
         except Exception as e:
             print("Noise loading failed!")
             print(str(e))
 
+        #Avoid hardcode Fix me?
+        self.noise_mean = np.clip(self.noise_mean, a_min=1./146484,a_max=None)
+        self.noise_tau = 1./np.log(1 + 1./self.noise_mean)
+
         # Divide the noise_mean_func by the roach_avg.
-        #self.gain_func = interpolate.interp1d( self.gain_noise.freq, self.gain_noise.gain)
+        self.gain_func = self.estimate_gain()
 
         # Fast estimation of zero-suppression thresholds
         # We call it for both spec and speck, so that the rng is called the same for each, and dmtracks are the same
         self.thresholds = self.set_thresholds()
 
         self.ExB = exb.ExB(self.config.trackbuilder.voltage_off_time_ms/1000., self.config.trackbuilder.voltage_on_time_ms/1000., self.config.trackbuilder.voltage_fractional_offset)
+
+    def estimate_gain(self):
+        G = self.noise_tau * 1. #multiply for copy by reference
+
+        #Get list of all peaks. Decrease prominence for more sensitivity to small peaks, though prone to picking up erroneous peaks
+        noise_peaks, properties = find_peaks(self.noise_tau, width=3, prominence=0.5)
+        #Pick out only the noise resonances (narrow) instead of gain/SNR oscillations (wide)
+        noise_peaks = noise_peaks[properties["widths"] < 40]
+
+        bins = np.arange(self.config.daq.freq_bins)
+        fit_width = 13
+        for peak in noise_peaks:
+            #region Lorentz + linear fit is computed over
+            binRange = [peak - fit_width, peak + fit_width]
+            mask = ( binRange[0] < bins)*(bins< binRange[1])
+            #Fitting model (linear background + lorentzian peak) (linear part defined with respect to bin_min)
+            fLinearLorentzian = lambda f, a, b, c, f0, HWHM: a + b*(f-binRange[0]) + c / (1 + ((f-f0)/HWHM)**2)
+            x = bins[mask]
+            y = G[mask]
+            popt, pcov = curve_fit(fLinearLorentzian, x, y, bounds=([0, -1,0,min(x), 1],[max(y), 1, 20., max(x), 20]))
+            popt[0:2] = 0 #Set linear parameters to 0, leaving only Lorentzian component. Subtract from tau to get gain w/o resonances
+            G -= fLinearLorentzian(bins,*popt)
+
+        #Uncomment and plot if debugging? Could become permanent feature. Should agree except at resonances, where G looks like resonances are subtracted out
+        #np.savetxt("gains.txt", G)
+        #np.savetxt("tau.txt", self.noise_tau)
+
+        return G
+
 
     def run(self, downmixed_tracks_df):
         """

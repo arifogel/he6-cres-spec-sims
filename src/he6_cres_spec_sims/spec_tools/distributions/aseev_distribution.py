@@ -8,6 +8,7 @@ class AseevDistribution(BaseDistribution):
         Represents a truncated Gaussian distribution between [0, eps_c] and a truncated Cauchy distribution between [eps_c, inf) 
         Found by inverse transform sampling. Use "standard" Gaussian, Cauchy parameterizations, instead of Aseev parameterization
         Describes energy loss distributions from inelastic scattering in Katrin
+        TODO: pre-compute functions that don't need to be invoked for each call (lines above p_gauss?). Allow for multiple isotopes
     """
     def __init__(self, isotope="H2"):
         # Set default values
