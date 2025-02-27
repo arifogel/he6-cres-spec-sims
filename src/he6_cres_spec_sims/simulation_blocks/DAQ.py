@@ -6,6 +6,7 @@ from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 
 import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
+from he6_cres_spec_sims.spec_tools.spec_calc.spec_calc import waveguide_beta
 from he6_cres_spec_sims.constants import *
 
 class DAQ:
@@ -49,11 +50,14 @@ class DAQ:
             print(str(e))
 
         #Avoid hardcode Fix me?
-        self.noise_mean = np.clip(self.noise_mean, a_min=1./146484,a_max=None)
+        #self.noise_mean = np.clip(self.noise_mean, a_min=1./146484,a_max=None)
+
         self.noise_tau = 1./np.log(1 + 1./self.noise_mean)
 
-        # Divide the noise_mean_func by the roach_avg.
-        self.gain_func = self.estimate_gain()
+        #amplitude gain g_overall(f) experienced by both signal and noise. Class object is interpolation function g(f)
+        #If frequency outside of bandwidth, automatically returns g(f) = 0 (aka, alias prevention)
+        gain_overall_array = self.estimate_gain()
+        self.gain_overall = interpolate.interp1d( self.freq_axis, gain_overall_array, bounds_error=False, fill_value=0)
 
         # Fast estimation of zero-suppression thresholds
         # We call it for both spec and speck, so that the rng is called the same for each, and dmtracks are the same
@@ -87,7 +91,18 @@ class DAQ:
         #np.savetxt("gains.txt", G)
         #np.savetxt("tau.txt", self.noise_tau)
 
-        return G
+        return np.sqrt(G/2.)
+
+    def signal_gain(self, f, sideband_order = 0, rs=[0.00,0.10], Ls = [0.15,0.92]):
+        #Should be a function of f, regardless if f is scalar or array
+        #This is first order approximation where we include reflections off the QWP, kapton, but not higher-order paths between them (e.g. Markov chain model)
+        rs = np.asarray(rs)
+        Ls = np.asarray(Ls)
+        #SNR oscillations
+        gSignal = np.sum((-1) ** sideband_order * r * np.exp(1j * 2 * waveguide_beta(2*np.pi*(f + self.config.downmixer.mixer_freq)) * L) , axis=0) + 1.
+        #alias prevention
+        gSignal *= ( f > 0 ) * (f < self.config.daq.freq_bw)
+        return gSignal
 
 
     def run(self, downmixed_tracks_df):

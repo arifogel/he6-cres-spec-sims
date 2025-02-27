@@ -476,7 +476,7 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
 
 
 def waveguide_beta(omega):
-    """  Computes the (waveguide definition) of beta (propagation constant for TE11 mode
+    """  Computes the (waveguide definition) of beta (propagation constant for TE11 mode)
     """
     # fixed experiment parameters
     waveguide_radius = 0.578e-2
