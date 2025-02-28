@@ -1,4 +1,5 @@
 from he6_cres_spec_sims.constants import *
+from copy import deepcopy
 
 class Band:
     '''
@@ -24,7 +25,6 @@ class Band:
         self.band = band
 
         self.power = None
-        self.end_freq = None
         self.band_type = None
 
         # Returns true if no part of the band is within the bandwidth (so no need to write or store this band)
@@ -73,6 +73,9 @@ class Band:
         raise Exception("function Phi(t) not implemented by child class. Do so!")
         return None
 
+    def copy(self):
+        return deepcopy(self)
+
     def __repr__(self):
         return f"{self.band_type} Track"
 
@@ -81,11 +84,12 @@ class Band:
 
 
 class LinearBand(Band):
-     def __init__(self, start_time, start_freq, end_time, min_freq, max_freq, event, track, band, slope):
-        super().__init__(start_time, start_freq, end_time, min_freq, max_freq, event, track, band)
+    def __init__(self, start_time, start_freq, end_time, min_freq, max_freq, event, track, band, slope):
         self.track_type = "linear"
-
         self.slope = slope
+
+        #should be called last (after other parameters are assigned, so that f(t) is defined to calculate end_freq)
+        super().__init__(start_time, start_freq, end_time, min_freq, max_freq, event, track, band)
 
     def f(self, t):
         return self.start_freq + self.slope * (t - self.start_time)
