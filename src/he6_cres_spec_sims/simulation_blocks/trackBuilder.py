@@ -1,4 +1,5 @@
 from .eventBuilder import *
+import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 import he6_cres_spec_sims.spec_tools.spec_calc.power_calc as pc
 import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
 from .Band import *
@@ -38,6 +39,9 @@ class TrackBuilder:
         bands = []
         tracks_list = []
 
+        #RF BW for cutting off bands appropriately to remove aliasing
+        min_freq = self.config.downmixer.mixer_freq
+        max_freq = min_freq + self.config.daq.freq_bw
 
         #create tracks for every event
         for event_index, event in trapped_event_df.iterrows():
@@ -54,8 +58,6 @@ class TrackBuilder:
 
             #list of band objects (to be added to bands list)
             event_main_bands = []
-
-            max_freq = self.config.physics.freq_acceptance_high
 
             #Randomly distribute events among N acquisitions as an integer between [0,N-1] (to be assigned to all tracks in event)
             #https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.integers.html
@@ -85,9 +87,13 @@ class TrackBuilder:
                 tracks[track_num]["end_time"] =  np.clip(tracks[track_num]["end_time"], None, time_next_exb_sweep)
                 tracks[track_num]["track_length"] = tracks[track_num]["end_time"] - tracks[track_num]["start_time"]
 
-                # Given the end time, assign the end frequency, energy
+                #Estimate the slope from the Larmor power
                 track_radiated_power_tot = sc.power_larmor(tracks[track_num]["b_avg"], tracks[track_num]["start_freq"])
-                band = self.create_band(tracks[track_num]["start_time"], tracks[track_num]["start_freq"], track_radiated_power_tot, tracks[track_num]["end_time"], max_freq, event_index, track_num-1, track_num, tracks[track_num]["b_avg"])
+                start_energy = sc.freq_to_energy(tracks[track_num]["start_freq"], tracks[track_num]["b_avg"])
+                slope = sc.df_dt( start_energy, tracks[track_num]["b_avg"], track_radiated_power_tot)
+
+                ### XXX What is band number really doing here?
+                band = LinearBand(tracks[track_num]["start_time"], tracks[track_num]["start_freq"],  tracks[track_num]["end_time"], min_freq, max_freq, event_index, track_num-1, track_num, slope)
                 event_main_bands.append(band)
 
                 #Modify track end properties based on integration
@@ -236,10 +242,3 @@ class TrackBuilder:
         df["track_power"] = track_power
 
         return df
-
-    def create_band(self, time, freq, power, max_time, max_freq, event_num, track_num, band_num, b_avg):
-        '''
-        This function creates a linear band object describing time-frequency evolution
-        '''
-        # DAQ.py applies a frequency-dependent amplitude function to avoid aliasing
-        return LinearBand(time, freq, power, event_num, track_num, band_num, max_time, max_freq, b_avg)
