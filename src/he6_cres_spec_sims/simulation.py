@@ -49,6 +49,8 @@ class Simulation:
         tracks_df, bands = trackbuilder.run(tracks_df)
         tracks_df, bands = sidebandbuilder.run(tracks_df, bands)
         downmixed_tracks_df = dmtrackbuilder.run(tracks_df, bands)
+        print(bands)
+
         if self.config.settings.sim_daq:
             spec_array = daq.run(downmixed_tracks_df)
         # Save the results of the simulation:

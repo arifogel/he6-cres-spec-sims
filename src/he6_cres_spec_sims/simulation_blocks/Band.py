@@ -25,7 +25,6 @@ class Band:
         self.band = band
 
         self.power = None
-        self.band_type = None
 
         # Returns true if no part of the band is within the bandwidth (so no need to write or store this band)
         # Necessary to create band before we know if it is in bandwidth, for stuff "from below". May be born outside BW, enter BW later
@@ -77,19 +76,21 @@ class Band:
         return deepcopy(self)
 
     def __repr__(self):
-        return f"{self.band_type} Track"
+        return f"{self.band_type} {self.event} {self.track} {self.band}"
 
     def __str__(self):
         return f"{self.band_type} Track \n Event: {self.event} \n Track: {self.track} \n Band: {self.band}"
 
 
+
 class LinearBand(Band):
     def __init__(self, start_time, start_freq, end_time, min_freq, max_freq, event, track, band, slope):
-        self.track_type = "linear"
         self.slope = slope
+        self.band_type = "LinearBand"
 
         #should be called last (after other parameters are assigned, so that f(t) is defined to calculate end_freq)
         super().__init__(start_time, start_freq, end_time, min_freq, max_freq, event, track, band)
+
 
     def f(self, t):
         return self.start_freq + self.slope * (t - self.start_time)
@@ -100,4 +101,3 @@ class LinearBand(Band):
     def Phi(self, t):
         #Phi(start_time) = 0.
         return 2*PI*(self.start_freq * (t-self.start_time)  + self.slope / 2. * (t - self.start_time)**2)
-

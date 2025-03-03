@@ -22,7 +22,6 @@ class SideBandBuilder:
         band_list = []
 
         for tracks_index, row in tracks_df.iterrows():
-
             if harmonic_sidebands:
                 sideband_amplitudes = sc.sideband_calc(
                     row["energy"],
@@ -73,7 +72,8 @@ class SideBandBuilder:
                         freq_shift = row_copy["start_freq"] - row["start_freq"]
                         new_track = band_copy.shift_frequency(freq_shift).set_band(band_num)
                         sidebands.append(new_track)
-                bands[int(row_copy["event_num"])] += sidebands
+            #print(sidebands)
+            bands[int(row_copy["event_num"])] += sidebands
 
         bands_df = pd.DataFrame(band_list, columns=tracks_df.columns)
 

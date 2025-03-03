@@ -62,7 +62,7 @@ class TrackBuilder:
             #Randomly distribute events among N acquisitions as an integer between [0,N-1] (to be assigned to all tracks in event)
             #https://numpy.org/doc/stable/reference/random/generated/numpy.random.Generator.integers.html
             acq_num = self.config.dist_interface.rng.integers(0, self.config.daq.n_acquisitions, dtype=int, endpoint=False)
-            print("Acquisition Number: ", acq_num)
+            #print("Acquisition Number: ", acq_num)
 
             #Time at which the trap next empties or the current file acquisition ends
             #Corresponds to the max end time of the event, unless it scatters out or leaves bandwidth
@@ -92,8 +92,7 @@ class TrackBuilder:
                 start_energy = sc.freq_to_energy(tracks[track_num]["start_freq"], tracks[track_num]["b_avg"])
                 slope = sc.df_dt( start_energy, tracks[track_num]["b_avg"], track_radiated_power_tot)
 
-                ### XXX What is band number really doing here?
-                band = LinearBand(tracks[track_num]["start_time"], tracks[track_num]["start_freq"],  tracks[track_num]["end_time"], min_freq, max_freq, event_index, track_num-1, track_num, slope)
+                band = LinearBand(tracks[track_num]["start_time"], tracks[track_num]["start_freq"],  tracks[track_num]["end_time"], min_freq, max_freq, event_index, track_num, 0, slope)
                 event_main_bands.append(band)
 
                 #Modify track end properties based on integration

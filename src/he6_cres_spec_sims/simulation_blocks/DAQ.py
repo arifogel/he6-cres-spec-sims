@@ -138,7 +138,7 @@ class DAQ:
                 # LNA gain of 67dB
                 #TODO: make this a function of freq. This should be improved (different sideband handling), etc.
                 #spec_array *= np.sqrt(self.gain_func(self.freq_axis) * requant_gain_scaling * 5e6)
-                spec_array *= np.sqrt( requant_gain_scaling * 5e6) * 10
+                spec_array *= np.sqrt( requant_gain_scaling * 5e6) * 5
 
                 #shape[1] is the number of slices, though by doing it like this, we handle automatically if
                 # roach_inverted_flag=True (so this is number of slices either before or after summing/tossing)
@@ -270,7 +270,8 @@ class DAQ:
         """
         Build a frequency-domain array of noise (Dimensions = N_FFT Bins x self.slice_block slices)
         For additive white Gaussian noise n, N(f) = FFT(n) is also Gaussian distributed
-        For colored noise, multiply by appropriate frequency-dependent factor
+        Note that noise is scaled according to noise-only data (tau(f)).
+        For the signal only, we will multiply by gain_tot(f), it is already included in the noise here
         Returns frequency-domain (with phase)
         """
 
