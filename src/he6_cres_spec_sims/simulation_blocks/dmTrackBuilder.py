@@ -17,6 +17,7 @@ class DMTrackBuilder:
         #bands is a nested list, where the i'th element is the list of bands in the i'th event
         for event in bands:
             for band in event:
+                band.shrink_to_BW() #shrink_to_BW defined between before LO (see trackBuilder: min_freq, max_freq)
                 band.shift_frequency(-mixer_freq)
 
         return downmixed_tracks_df

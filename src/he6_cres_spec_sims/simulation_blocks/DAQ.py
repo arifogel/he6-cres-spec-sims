@@ -189,7 +189,8 @@ class DAQ:
 
         # shape of signal_alive_condition: num_bands
         signal_alive_condition = np.where([(
-            (b.acquisition == acq)
+            (b.outside_BW == False)
+            & (b.acquisition == acq)
             & (b.start_time <= slice_stop_time)
             & (b.end_time >= slice_start_time))
             for b in self.bands])[0]
