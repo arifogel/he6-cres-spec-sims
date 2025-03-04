@@ -19,6 +19,7 @@ Classes contained in module:
 """
 
 import pandas as pd
+from numpy import hstack
 
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
 import he6_cres_spec_sims.simulation_blocks.config
@@ -51,9 +52,10 @@ class Simulation:
         downmixed_tracks_df = dmtrackbuilder.run(tracks_df, bands)
         if self.config.settings.sim_daq:
             spec_array = daq.run(bands)
+
         # Save the results of the simulation:
         # For now only write downmixed_tracks to keep things lightweight.
-        results = Results(downmixed_tracks_df)
+        results = Results(downmixed_tracks_df, bands)
         results.save(self.config_path)
 
         return None
@@ -82,8 +84,9 @@ class Results:
         to and from a csv with a set name
     """
 
-    def __init__(self, dmtracks):
+    def __init__(self, dmtracks, bands=None):
         self.dmtracks = dmtracks
+        self.bands = bands
 
     def get_path_name(self, config_path):
         config_name = config_path.stem
@@ -92,8 +95,11 @@ class Results:
         return results_dir
 
     def save(self, config_path):
-        # Only writing these dmtracks to make the simulations more lightweight
         results_dict = { "dmtracks": self.dmtracks }
+
+        if self.bands is not None:
+            df_bands = pd.DataFrame([band.to_dict() for band in hstack(self.bands)])
+            results_dict["bands"] = df_bands
 
         # First make a results_dir with the same name as the config.
         results_dir = self.get_path_name(config_path)

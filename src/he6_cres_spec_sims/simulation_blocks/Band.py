@@ -76,6 +76,10 @@ class Band:
     def copy(self):
         return deepcopy(self)
 
+    def to_dict(self):
+        #For converting class members to dictionary for pandas csv output
+        return {"acquisition": self.acquisition, "start_time": self.start_time,"start_freq": self.start_freq, "end_time": self.end_time, "end_freq": self.end_freq, "event": self.event, "track": self.track, "band": self.band}
+
     def __repr__(self):
         return f"{self.band_type} {self.event} {self.track} {self.band}"
 
