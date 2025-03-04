@@ -1,6 +1,6 @@
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 import pandas as pd
-from he6_cres_spec_sims.simulation_blocks.trackBuilder import * 
+from he6_cres_spec_sims.simulation_blocks.trackBuilder import *
 
 class SideBandBuilder:
     """ Constructs list of sidebands and powers from main bands made in trackbuilder
@@ -18,8 +18,6 @@ class SideBandBuilder:
         harmonic_sidebands = self.config.sidebandbuilder.harmonic_sidebands
 
         frac_total_track_power_cut = self.config.sidebandbuilder.frac_total_track_power_cut
-        total_band_num = sideband_num * 2 + 1
-        band_list = []
 
         for tracks_index, row in tracks_df.iterrows():
             if harmonic_sidebands:
@@ -50,19 +48,13 @@ class SideBandBuilder:
             row_copy = row.copy()
             sidebands= []
             for i, band_num in enumerate(range(-sideband_num, sideband_num + 1)):
-                if sideband_amplitudes[i][1] < frac_total_track_power_cut:
-                    continue
-                else:
+                if sideband_amplitudes[i][1] > frac_total_track_power_cut:
                     # fill in new avg_cycl_freq, band_power, band_num
                     # TODO: properly determine band power stop.
                     row_copy["start_freq"] = sideband_amplitudes[i][0]
                     # Note that the sideband amplitudes need to be squared to give power.
                     row_copy["start_band_power"] = sideband_amplitudes[i][1] ** 2 * row.track_power
                     row_copy["end_band_power"] = row_copy["start_band_power"]
-                    row_copy["band_num"] = band_num
-
-                    # append to band_list, as it's better to grow a list than a df
-                    band_list.append(row_copy.tolist())
 
                     if band_num==0:
                         bands[int(row_copy["event_num"])][int(row_copy["track_num"])].set_power(row_copy["start_band_power"])
@@ -72,9 +64,6 @@ class SideBandBuilder:
                         freq_shift = row_copy["start_freq"] - row["start_freq"]
                         new_track = band_copy.shift_frequency(freq_shift).set_band(band_num)
                         sidebands.append(new_track)
-            #print(sidebands)
             bands[int(row_copy["event_num"])] += sidebands
 
-        bands_df = pd.DataFrame(band_list, columns=tracks_df.columns)
-
-        return bands_df, bands
+        return bands

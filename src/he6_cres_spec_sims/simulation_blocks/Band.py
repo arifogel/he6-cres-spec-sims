@@ -10,9 +10,10 @@ class Band:
     NOTE: in the base class constructor, start_time, start_freq, end_time ARE modified to fit in the BW (end_freq is computed)
     '''
 
-    def __init__(self, start_time, start_freq, end_time, min_freq, max_freq, event, track, band):
-        self.start_freq = start_freq
+    def __init__(self, acquisition, start_time, start_freq, end_time, min_freq, max_freq, event, track, band):
+        self.acquisition = acquisition
         self.start_time = start_time
+        self.start_freq = start_freq
         self.end_time = end_time
         self.end_freq = self.f(end_time)
 
@@ -81,16 +82,13 @@ class Band:
     def __str__(self):
         return f"{self.band_type} Track \n Event: {self.event} \n Track: {self.track} \n Band: {self.band}"
 
-
-
 class LinearBand(Band):
-    def __init__(self, start_time, start_freq, end_time, min_freq, max_freq, event, track, band, slope):
+    def __init__(self, acquisition, start_time, start_freq, end_time, min_freq, max_freq, event, track, band, slope):
         self.slope = slope
         self.band_type = "LinearBand"
 
         #should be called last (after other parameters are assigned, so that f(t) is defined to calculate end_freq)
-        super().__init__(start_time, start_freq, end_time, min_freq, max_freq, event, track, band)
-
+        super().__init__(acquisition, start_time, start_freq, end_time, min_freq, max_freq, event, track, band)
 
     def f(self, t):
         return self.start_freq + self.slope * (t - self.start_time)

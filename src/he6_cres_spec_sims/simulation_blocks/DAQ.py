@@ -10,9 +10,9 @@ from he6_cres_spec_sims.spec_tools.spec_calc.spec_calc import waveguide_beta
 from he6_cres_spec_sims.constants import *
 
 class DAQ:
-    """  Optionally passes through list of produced downmixed tracks through DAQ, producing fake .spec(k) files
+    """  If called, this module  passes through list of downmixed bands through the DAQ, producing fake .spec(k) files
          These can be passed through Katydid, identically to data
-         Converts tracks to time-domain signals, s(t). FFTs give S(f), for each slice
+         Converts bands to time-domain signals, s(t). FFTs give S(f), for each slice
          Data = |S(f) + N(f)|**2, converted to uint8, and written to .spec(k) files
     """
 
@@ -60,7 +60,7 @@ class DAQ:
         self.gain_overall = interpolate.interp1d( self.freq_axis, gain_overall_array, bounds_error=False, fill_value=0)
 
         # Fast estimation of zero-suppression thresholds
-        # We call it for both spec and speck, so that the rng is called the same for each, and dmtracks are the same
+        # We call it for both spec and speck, so that the rng for fake bands are the same
         self.thresholds = self.set_thresholds()
 
         self.ExB = exb.ExB(self.config.trackbuilder.voltage_off_time_ms/1000., self.config.trackbuilder.voltage_on_time_ms/1000., self.config.trackbuilder.voltage_fractional_offset)
@@ -105,16 +105,18 @@ class DAQ:
         return gSignal
 
 
-    def run(self, downmixed_tracks_df):
+    def run(self, bands):
         """
         This function is responsible for building out the spec files and calling the below methods.
         """
-        self.tracks = downmixed_tracks_df
+        # Flatten into a 1D NumPy array
+        self.bands = np.hstack(bands)
+
         # Define a random phase for each band. Need to be associated per track (lasting multiple chunks)
         # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from
         # initial particle position. Different bands in the same event have correlated phases depending on z0
         # Should be done earlier, probably
-        self.tracks["phi_0"] = self.config.dist_interface.rng.uniform(0,2 * PI, size=len(self.tracks))
+        #self.bands["phi_0"] = self.config.dist_interface.rng.uniform(0,2 * PI, size=len(self.bands))
 
         self.create_results_dir()
         self.spec_file_paths = self.build_file_paths(self.n_acquisitions, self.n_channels, self.spec_files_dir)
@@ -184,41 +186,32 @@ class DAQ:
         t = np.linspace(slice_start_time, slice_stop_time, self.pts_per_fft * num_slices )
         dt = t[1] - t[0]
         signal_time_series = np.zeros(shape=self.pts_per_fft * num_slices)
-        track_phase = np.zeros(shape=self.pts_per_fft * num_slices )
 
-        # TODO: It is on the previous blocks to make sure that the end times are calculated correctly
-        # so that the LPF is imposed. Maybe throw a warning?
+        # shape of signal_alive_condition: num_bands
+        signal_alive_condition = np.where([(
+            (b.acquisition == acq)
+            & (b.start_time <= slice_stop_time)
+            & (b.end_time >= slice_start_time))
+            for b in self.bands])[0]
 
-        # shape of signal_alive_condition: num_tracks
-        signal_alive_condition = (
-             (self.tracks["start_time"] <= slice_stop_time)
-            & (self.tracks["end_time"] >= slice_start_time)
-        )
-
-        eligible_tracks = self.tracks[signal_alive_condition]
+        eligible_bands = self.bands[signal_alive_condition]
 
         # Sum all signals in bandwidth to get total (CRES) time-series, to be FFT'ed
         # The factor of 2 is needed because the instantaneous frequency is the derivative of the phase
         # The band_phase is a random phase assigned to each band.
         time_to_index = lambda tTime: int( (tTime - t[0]) / dt)
 
-        for track_index, track in eligible_tracks.iterrows():
+        for band in eligible_bands:
             # TODO: Put back in time-dependence of amplitudes. Want to add in frequency-dependence too
-            band_power = track["start_band_power"]
-
-            # Slice object - selects the time indices in which the track is active
-            track_mask = slice(max(time_to_index(track["start_time"]), 0), time_to_index(track["end_time"]), 1)
-
-            track_phase[track_mask] = 2 * PI * track["start_freq"] * (t[track_mask]-track["start_time"])
-            track_phase[track_mask] += 2 * PI * track["slope"] / 2 * (t[track_mask]-track["start_time"])**2
-
-            track_phase[track_mask] += track["phi_0"]
-
             #XXXX Fix hardcoded band_power
+            #band_power = band.start_band_power
             band_power = 5e-14
+
+            # Slice object - selects the time indices in which the band is active
+            band_mask = slice(max(time_to_index(band.start_time), 0), time_to_index(band.end_time), 1)
+
             voltage = np.sqrt(band_power * self.antenna_z)
-            signal_time_series[track_mask] += voltage * np.sin( track_phase[track_mask])
-            track_phase[track_mask] = 0
+            signal_time_series[band_mask] += voltage * np.sin( band.Phi(t[band_mask]))
 
         return signal_time_series.reshape((num_slices, self.pts_per_fft)).transpose()
 

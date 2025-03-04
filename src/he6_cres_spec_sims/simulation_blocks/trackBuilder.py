@@ -92,7 +92,7 @@ class TrackBuilder:
                 start_energy = sc.freq_to_energy(tracks[track_num]["start_freq"], tracks[track_num]["b_avg"])
                 slope = sc.df_dt( start_energy, tracks[track_num]["b_avg"], track_radiated_power_tot)
 
-                band = LinearBand(tracks[track_num]["start_time"], tracks[track_num]["start_freq"],  tracks[track_num]["end_time"], min_freq, max_freq, event_index, track_num, 0, slope)
+                band = LinearBand(acq_num, tracks[track_num]["start_time"], tracks[track_num]["start_freq"],  tracks[track_num]["end_time"], min_freq, max_freq, event_index, track_num, 0, slope)
                 event_main_bands.append(band)
 
                 #Modify track end properties based on integration
