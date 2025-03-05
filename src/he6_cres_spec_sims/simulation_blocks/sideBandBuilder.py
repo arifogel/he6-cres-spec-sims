@@ -44,26 +44,22 @@ class SideBandBuilder:
                     num_sidebands=sideband_num,
                 )[0]
 
-            # copy track in order to fill in band specific values
-            row_copy = row.copy()
-            sidebands= []
+            sidebands = []
+
             for i, band_num in enumerate(range(-sideband_num, sideband_num + 1)):
                 if sideband_amplitudes[i][1] > frac_total_track_power_cut:
                     # fill in new avg_cycl_freq, band_power, band_num
-                    # TODO: properly determine band power stop.
-                    row_copy["start_freq"] = sideband_amplitudes[i][0]
+                    start_freq = sideband_amplitudes[i][0]
                     # Note that the sideband amplitudes need to be squared to give power.
-                    row_copy["start_band_power"] = sideband_amplitudes[i][1] ** 2 * row.track_power
-                    row_copy["end_band_power"] = row_copy["start_band_power"]
+                    band_power = sideband_amplitudes[i][1] ** 2 * row.track_power
 
-                    if band_num==0:
-                        bands[int(row_copy["event_num"])][int(row_copy["track_num"])].set_power(row_copy["start_band_power"])
+                    freq_shift = start_freq - row["start_freq"]
+                    new_track = bands[int(row["event_num"])][int(row["track_num"])].copy()
+                    new_track.shift_frequency(freq_shift)
+                    new_track.set_band(band_num)
+                    new_track.set_power(band_power)
+                    sidebands.append(new_track)
 
-                    else:
-                        band_copy = bands[int(row_copy["event_num"])][int(row_copy["track_num"])].copy()
-                        freq_shift = row_copy["start_freq"] - row["start_freq"]
-                        new_track = band_copy.shift_frequency(freq_shift).set_band(band_num)
-                        sidebands.append(new_track)
-            bands[int(row_copy["event_num"])] += sidebands
+            bands[int(row["event_num"])] = sidebands
 
         return bands

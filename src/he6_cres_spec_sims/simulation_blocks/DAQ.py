@@ -203,15 +203,11 @@ class DAQ:
         time_to_index = lambda tTime: int( (tTime - t[0]) / dt)
 
         for band in eligible_bands:
-            # TODO: Put back in time-dependence of amplitudes. Want to add in frequency-dependence too
-            #XXXX Fix hardcoded band_power
-            #band_power = band.start_band_power
-            band_power = 5e-14
-
             # Slice object - selects the time indices in which the band is active
             band_mask = slice(max(time_to_index(band.start_time), 0), time_to_index(band.end_time), 1)
 
-            voltage = np.sqrt(band_power * self.antenna_z)
+            # TODO: Put back in time-dependence of amplitudes. Want to add in frequency-dependence too
+            voltage = np.sqrt(band.power * self.antenna_z)
             signal_time_series[band_mask] += voltage * np.sin( band.Phi(t[band_mask]))
 
         return signal_time_series.reshape((num_slices, self.pts_per_fft)).transpose()

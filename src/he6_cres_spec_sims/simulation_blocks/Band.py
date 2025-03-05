@@ -25,7 +25,7 @@ class Band:
         self.track = track
         self.band = band
 
-        self.power = None
+        self.power = 1e-12
 
         # Returns true if no part of the band is within the bandwidth (so no need to write or store this band)
         # Necessary to create band before we know if it is in bandwidth, for stuff "from below". May be born outside BW, enter BW later
@@ -78,7 +78,7 @@ class Band:
 
     def to_dict(self):
         #For converting class members to dictionary for pandas csv output
-        return {"acquisition": self.acquisition, "start_time": self.start_time,"start_freq": self.start_freq, "end_time": self.end_time, "end_freq": self.end_freq, "event": self.event, "track": self.track, "band": self.band}
+        return {"acquisition": self.acquisition, "start_time": self.start_time,"start_freq": self.start_freq, "end_time": self.end_time, "end_freq": self.end_freq, "power": self.power, "event": self.event, "track": self.track, "band": self.band}
 
     def __repr__(self):
         return f"{self.band_type} {self.event} {self.track} {self.band}"
