@@ -52,7 +52,7 @@ class DAQ:
         #Avoid hardcode Fix me?
         #self.noise_mean = np.clip(self.noise_mean, a_min=1./146484,a_max=None)
 
-        self.noise_tau = 1./np.log(1 + 1./self.noise_mean)
+        self.noise_tau = np.nan_to_num(1./np.log(1 + 1./self.noise_mean), 0)
 
         #amplitude gain g_overall(f) experienced by both signal and noise. Class object is interpolation function g(f)
         #If frequency outside of bandwidth, automatically returns g(f) = 0 (aka, alias prevention)
@@ -87,19 +87,21 @@ class DAQ:
             popt[0:2] = 0 #Set linear parameters to 0, leaving only Lorentzian component. Subtract from tau to get gain w/o resonances
             G -= fLinearLorentzian(bins,*popt)
 
+        #prevent negative gains after subtracting out the Lorentzians
+        G = np.clip(G,a_min=0,a_max=None)
         #Uncomment and plot if debugging? Could become permanent feature. Should agree except at resonances, where G looks like resonances are subtracted out
         #np.savetxt("gains.txt", G)
         #np.savetxt("tau.txt", self.noise_tau)
 
         return np.sqrt(G/2.)
 
-    def signal_gain(self, f, sideband_order = 0, rs=[0.00,0.10], Ls = [0.15,0.92]):
+    def signal_gain(self, f, sideband_order = 0, r=[0.10,0.10], L = [0.15,0.92]):
         #Should be a function of f, regardless if f is scalar or array
         #This is first order approximation where we include reflections off the QWP, kapton, but not higher-order paths between them (e.g. Markov chain model)
-        rs = np.asarray(rs)
-        Ls = np.asarray(Ls)
+        r = np.asarray(r)
+        L = np.asarray(L)
         #SNR oscillations
-        gSignal = np.sum((-1) ** sideband_order * r * np.exp(1j * 2 * waveguide_beta(2*np.pi*(f + self.config.downmixer.mixer_freq)) * L) , axis=0) + 1.
+        gSignal = np.abs((-1) ** sideband_order * r[0] * np.exp(1j * 2 * waveguide_beta(2*np.pi*(f + self.config.downmixer.mixer_freq)) * L[0]) + 1.)
         #alias prevention
         gSignal *= ( f > 0 ) * (f < self.config.daq.freq_bw)
         return gSignal
@@ -137,10 +139,7 @@ class DAQ:
 
                 #dimensions: slices x FFT bins
                 spec_array = self.get_signal_array( acq, start_slice, stop_slice)
-                # LNA gain of 67dB
-                #TODO: make this a function of freq. This should be improved (different sideband handling), etc.
-                #spec_array *= np.sqrt(self.gain_func(self.freq_axis) * requant_gain_scaling * 5e6)
-                spec_array *= np.sqrt( requant_gain_scaling * 5e6) * 5
+                spec_array *= np.sqrt( requant_gain_scaling)
 
                 #shape[1] is the number of slices, though by doing it like this, we handle automatically if
                 # roach_inverted_flag=True (so this is number of slices either before or after summing/tossing)
@@ -207,7 +206,9 @@ class DAQ:
             band_mask = slice(max(time_to_index(band.start_time), 0), time_to_index(band.end_time), 1)
 
             # TODO: Put back in time-dependence of amplitudes. Want to add in frequency-dependence too
-            voltage = np.sqrt(band.power * self.antenna_z)
+            f = band.f(t[band_mask])
+            voltage = np.sqrt(band.power * self.antenna_z) * self.gain_overall(f) * self.signal_gain(f, band.band)
+            #voltage = np.sqrt(band.power * self.antenna_z)
             signal_time_series[band_mask] += voltage * np.sin( band.Phi(t[band_mask]))
 
         return signal_time_series.reshape((num_slices, self.pts_per_fft)).transpose()
@@ -228,7 +229,7 @@ class DAQ:
         # Nick found this by setting voltage_off_time = 0, producing a spectrogram.
         # From https://drive.google.com/file/d/197czYZ2x9wSeNMNPTpIlJNUG2gTmIewV/view?usp=sharing (slide 11)
         # we should get an average power in the spectrogram of 98.3 at input of -1 dB. Scale reference power accordingly
-        reference_power = 9.494e-13
+        reference_power = 4.747e-6
         voltage = np.sqrt(reference_power * self.antenna_z) * 10**(self.config.daq.vaunix_power_db / 20.)
         # modulus creates periodic vaunix pulse. "%" operator does work for floats
         vaunix_time_series =  voltage * self.ExB.vaunix_time_series(t, fVaunix)
@@ -243,6 +244,8 @@ class DAQ:
         Returns frequency-domain (with phase)
         """
         signal_time_series = self.get_signal_time_series(acq, start_slice, stop_slice)
+        # LNA gain of 67dB (this should be a user parameter)
+        signal_time_series *= np.sqrt(1e9)
         signal_time_series += self.get_vaunix_time_series(acq, start_slice, stop_slice)
 
         #shape of signal_time_series: (pts_per_fft, num_slices). Conduct a 1d FFT along axis = 0 (the time axis).
