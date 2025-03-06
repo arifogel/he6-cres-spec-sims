@@ -98,7 +98,7 @@ class Results:
         results_dict = { "dmtracks": self.dmtracks }
 
         if self.bands is not None:
-            df_bands = pd.DataFrame([band.to_dict() for band in hstack(self.bands)])
+            df_bands = pd.DataFrame([band.to_dict() for band in hstack(self.bands) if not band.outside_BW])
             results_dict["bands"] = df_bands
 
         # First make a results_dir with the same name as the config.

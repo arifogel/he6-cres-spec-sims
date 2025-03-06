@@ -25,23 +25,26 @@ class Band:
         self.track = track
         self.band = band
 
-        self.power = 1e-12
+        self.power = None
 
         # Returns true if no part of the band is within the bandwidth (so no need to write or store this band)
         # Necessary to create band before we know if it is in bandwidth, for stuff "from below". May be born outside BW, enter BW later
-        self.outside_BW = ((self.start_freq > self.max_freq) or (self.end_freq < self.min_freq))
+        self.outside_BW = None
 
     def shrink_to_BW(self):
         # Modify start_time, start_freq, end_time for entering/exiting bandwidth. Necessary to prevent aliasing
         # Note the two separate if statements: both are necessary (not an elif) for an event passing all the way through the BW
         # If you are copying a mainband to create sidebands, create sidebands THEN apply this function
         # otherwise, a sideband will have a modified start/end time based on when mainband enters/leaves BW (incorrect)
+
+        self.outside_BW = ((self.start_freq > self.max_freq) or (self.end_freq < self.min_freq))
+
         if self.end_freq > self.max_freq:
-            self.end_freq = self.max_freq
             self.end_time = self.t(self.max_freq)
+            self.end_freq = self.max_freq
         if self.start_freq < self.min_freq:
-            self.start_freq = self.min_freq
             self.start_time = self.t(self.min_freq)
+            self.start_freq = self.min_freq
 
     def set_power(self, power):
         self.power = power
