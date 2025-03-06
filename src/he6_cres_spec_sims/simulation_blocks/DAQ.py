@@ -49,15 +49,14 @@ class DAQ:
             print("Noise loading failed!")
             print(str(e))
 
-        #Avoid hardcode Fix me?
-        #self.noise_mean = np.clip(self.noise_mean, a_min=1./146484,a_max=None)
-
         self.noise_tau = np.nan_to_num(1./np.log(1 + 1./self.noise_mean), 0)
 
         #amplitude gain g_overall(f) experienced by both signal and noise. Class object is interpolation function g(f)
         #If frequency outside of bandwidth, automatically returns g(f) = 0 (aka, alias prevention)
-        gain_overall_array = self.estimate_gain()
-        self.gain_overall = interpolate.interp1d( self.freq_axis, gain_overall_array, bounds_error=False, fill_value=0)
+        self.gain_overall_array = self.estimate_gain()
+
+        #Save signal gain as arrays to reference for later (much faster than generating on the fly for each signal)
+        self.signal_gain_array = self.signal_gains(self.config.sidebandbuilder.sideband_num, self.freq_axis)
 
         # Fast estimation of zero-suppression thresholds
         # We call it for both spec and speck, so that the rng for fake bands are the same
@@ -95,17 +94,16 @@ class DAQ:
 
         return np.sqrt(G/2.)
 
-    def signal_gain(self, f, sideband_order = 0, r=[0.10,0.10], L = [0.15,0.92]):
-        #Should be a function of f, regardless if f is scalar or array
-        #This is first order approximation where we include reflections off the QWP, kapton, but not higher-order paths between them (e.g. Markov chain model)
-        r = np.asarray(r)
-        L = np.asarray(L)
-        #SNR oscillations
-        gSignal = np.abs((-1) ** sideband_order * r[0] * np.exp(1j * 2 * waveguide_beta(2*np.pi*(f + self.config.downmixer.mixer_freq)) * L[0]) + 1.)
-        #alias prevention
-        gSignal *= ( f > 0 ) * (f < self.config.daq.freq_bw)
-        return gSignal
+    def signal_gains(self, max_sideband_order, f, r=[0.10,0.10], L = [0.15,0.92]):
+        gSignal = np.ones(shape=(max_sideband_order+1, f.size)) + 0j
+        #perhaps there is a cleaner/clearer/more clever way to do this. Sum over reflective surfaces, compute for each sideband
+        #(-1)^s only valid exactly for harmonic traps
+        for i in range(len(r)):
+            vTmp = r[i] * np.exp(2 * 1j * waveguide_beta(2*np.pi*(f + self.config.downmixer.mixer_freq)) * L[i])
+            for s in range(max_sideband_order + 1):
+                gSignal[s,:] += (-1)**s * vTmp
 
+        return np.abs(gSignal)
 
     def run(self, bands):
         """
@@ -206,9 +204,9 @@ class DAQ:
             band_mask = slice(max(time_to_index(band.start_time), 0), time_to_index(band.end_time), 1)
 
             # TODO: Put back in time-dependence of amplitudes. Want to add in frequency-dependence too
-            f = band.f(t[band_mask])
-            voltage = np.sqrt(band.power * self.antenna_z) * self.gain_overall(f) * self.signal_gain(f, band.band)
-            #voltage = np.sqrt(band.power * self.antenna_z)
+            inds = (band.f(t[band_mask]) / self.delta_f).astype(int)
+            #The abs is so you pick out the ORDER of the sidebands for the signal gain profile. Negative indices don't work here
+            voltage = np.sqrt(band.power * self.antenna_z) * self.signal_gain_array[abs(band.band)][inds]
             signal_time_series[band_mask] += voltage * np.sin( band.Phi(t[band_mask]))
 
         return signal_time_series.reshape((num_slices, self.pts_per_fft)).transpose()
@@ -256,6 +254,11 @@ class DAQ:
             signal_time_series = signal_time_series[:,slices_to_keep]
 
         Y_fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[:self.pts_per_fft // 2]
+
+        #Multiply the Fourier transform of all signals by the overall amplifier gain profile
+        #Y_fft shape (fourier bins x slices), gain shape (fourier bins x 1). Product multiplies each slice by gain
+        Y_fft *= self.gain_overall_array[:,np.newaxis]
+
         return Y_fft.T
 
 
