@@ -27,6 +27,7 @@ class DAQ:
         self.pts_per_fft = config.daq.freq_bins * 2
         self.freq_axis = np.linspace( 0, self.config.daq.freq_bw, self.config.daq.freq_bins)
 
+
         self.antenna_z = 50  # Ohms
 
         self.slices_in_roach = int( config.daq.acq_length/ self.delta_t) # num slices in "data" (before averaging/tossing)
@@ -38,6 +39,9 @@ class DAQ:
 
         # This block size is used to create chunks of spec file that don't overwhelm the ram.
         self.slice_block = int(250 * 32768 / config.daq.freq_bins) * self.config.daq.roach_avg
+
+        #pre-allocate this so that I do not have to keep creating linspace times
+        self.t = np.linspace(0, self.slice_block*self.delta_t, self.pts_per_fft*self.slice_block)
 
         # Read in .spec files for noise-only reference
         self.noise_mean = np.ones(config.daq.freq_bins, dtype=float)
@@ -220,8 +224,8 @@ class DAQ:
         slice_stop_time = stop_slice * self.delta_t
         num_slices = stop_slice - start_slice
 
-        t = np.linspace(slice_start_time, slice_stop_time, self.pts_per_fft * num_slices )
         fVaunix = self.config.daq.vaunix_bin * self.config.daq.freq_bw / self.config.daq.freq_bins
+        omegaVaunix = 2*np.pi*fVaunix
 
         # vaunix power scaling given the axolotl controls (power in dB)
         # Nick found this by setting voltage_off_time = 0, producing a spectrogram.
@@ -229,8 +233,12 @@ class DAQ:
         # we should get an average power in the spectrogram of 98.3 at input of -1 dB. Scale reference power accordingly
         reference_power = 4.747e-6
         voltage = np.sqrt(reference_power * self.antenna_z) * 10**(self.config.daq.vaunix_power_db / 20.)
-        # modulus creates periodic vaunix pulse. "%" operator does work for floats
-        vaunix_time_series =  voltage * self.ExB.vaunix_time_series(t, fVaunix)
+
+        vaunix_time_series = np.zeros(self.pts_per_fft * num_slices)
+        slices = self.ExB.get_voltage_on_slices(slice_start_time, slice_stop_time, self.pts_per_fft * num_slices)
+
+        for vaunix_slice in slices:
+            vaunix_time_series[vaunix_slice] = voltage * np.sin(omegaVaunix*self.t[vaunix_slice])
 
         return vaunix_time_series.reshape((num_slices, self.pts_per_fft)).transpose()
 
@@ -452,6 +460,7 @@ class DAQ:
         Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
         worth of data.
         """
+
         slices_in_spec, freq_bins_in_spec = spec_array.shape
 
         # Append mostly empty packet header to data

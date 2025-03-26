@@ -28,17 +28,17 @@ class ExB:
         t_in_trap_acq = self.time_in_trap_acq(t)
         return  t - t_in_trap_acq + self.tVoltageOFF + (t_in_trap_acq > self.tVoltageOFF) * self.tVoltagePeriod
 
-    def vaunix_time_series(self, t, fSignal):
-        # given loaded vaunix parameters and a time series, return the vaunix signal (in data)
-        # assumes envelope x high-frequency pulse. We don't know how phases are correlated across pulses
-        # modulus creates periodic vaunix pulse. "%" operator does work for floats
+    def get_voltage_on_slices(self, tMin, tMax, N):
+        #given t = np.linspace(tMin, tMax, N), return the index range(s) in which the vaunix is on
+        # we don't actually want to construct the linspace array, as it is very slow to repeatedly allocate/deallocate this
+        dt = (tMax - tMin) / (N-1)
+        kRange = np.array([(tMin - self.tShift) / self.tVoltagePeriod, (tMax-self.tShift) / self.tVoltagePeriod])
+        kRange = kRange.astype(int)
+        slices = []
+        for k in range(kRange[0], kRange[1]+1):
+            nRising = max(int((self.tShift + k*self.tVoltagePeriod - tMin) / dt), 0)
+            nFalling = min(int((self.tShift + k*self.tVoltagePeriod + self.tVoltageON - tMin) / dt), N-1)
+            if (nRising < N) and (nFalling >= 0):
+                slices.append(slice(nRising, nFalling))
 
-        #TODO: it is unclear how the high-frequency phase of the vaunix is correlated across pulses.
-        # Should/ could set to random [0,2 pi]. Unobservable without time-domain or complex data. Punt for now
-
-        frac_time = ((t - self.tShift) / self.tVoltagePeriod)
-        mask = ((frac_time - np.floor(frac_time)) < (self.tVoltageON / self.tVoltagePeriod))
-        #mask = ((t - self.tShift) % self.tVoltagePeriod)<self.tVoltageON
-        result = np.zeros_like(t)
-        result[mask] = np.sin(2 * np.pi * fSignal * t[mask])
-        return result
+        return slices
