@@ -467,16 +467,18 @@ class DAQ:
 
         #initial index (e.g. 0 or 4096 for channels 0,1) in thresholds to compare to
         jThreshold0 = channel * freq_bins_in_spec
+        thresholds = self.thresholds[jThreshold0:jThreshold0+freq_bins_in_spec]
 
         # Pass "ab" to append to a binary file
         with open(speck_file_path, "ab") as speck_file:
             for s in range(slices_in_spec):
                 header[9:12] = self.packet_num_base_256(initial_packet + s)
                 data = np.append(data, header)
-                for j in range(freq_bins_in_spec):
-                    if int(spec_array[s][j]) > self.thresholds[jThreshold0 + j]:
-                        data = np.append(data, self.add_high_power_point(j))
-                        data = np.append(data, spec_array[s][j])
+                # select indices of spectrogram [0-4096] above threshold. Loop is slow!
+                indices = np.where(spec_array[s] >  thresholds)[0]
+                for j in indices:
+                    data = np.append(data, self.add_high_power_point(j))
+                    data = np.append(data, spec_array[s][j])
                 data = np.append(data, footer)
 
             data = data.flatten().astype("uint8")

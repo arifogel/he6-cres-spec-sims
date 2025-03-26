@@ -35,4 +35,10 @@ class ExB:
 
         #TODO: it is unclear how the high-frequency phase of the vaunix is correlated across pulses.
         # Should/ could set to random [0,2 pi]. Unobservable without time-domain or complex data. Punt for now
-        return ((t-self.tShift)%self.tVoltagePeriod < self.tVoltageON) * np.sin(2*np.pi*fSignal*t)
+
+        frac_time = ((t - self.tShift) / self.tVoltagePeriod)
+        mask = ((frac_time - np.floor(frac_time)) < (self.tVoltageON / self.tVoltagePeriod))
+        #mask = ((t - self.tShift) % self.tVoltagePeriod)<self.tVoltageON
+        result = np.zeros_like(t)
+        result[mask] = np.sin(2 * np.pi * fSignal * t[mask])
+        return result
