@@ -19,6 +19,8 @@ class SideBandBuilder:
 
         frac_total_track_power_cut = self.config.sidebandbuilder.frac_total_track_power_cut
 
+        out_bands = []
+
         for tracks_index, row in tracks_df.iterrows():
             if harmonic_sidebands:
                 sideband_amplitudes = sc.sideband_calc(
@@ -60,6 +62,9 @@ class SideBandBuilder:
                     new_track.set_power(band_power)
                     sidebands.append(new_track)
 
-            bands[int(row["event_num"])] = sidebands
+            if int(row["event_num"]) >= len(out_bands):
+                out_bands.append([])
 
-        return bands
+            out_bands[int(row["event_num"])] += sidebands
+
+        return out_bands
