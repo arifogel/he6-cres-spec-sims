@@ -581,6 +581,11 @@ def FFT_sideband_amplitudes(energy, rho, avg_cycl_freq, axial_freq, vz, z, trap_
     omega_c -= np.mean(omega_c)
     Phi = np.cumsum(omega_c) * dt
     expPhi = np.exp(1j * Phi)
+
+    #multiply by v_perp / vtot = sqrt(vtot^2 - vz^2) / vtot
+    vtot = velocity(energy)
+    expPhi *= np.sqrt( 1. - (vz/vtot)**2)
+
     yf = np.abs(fft(expPhi,norm="forward"))
     yf = yf[:nHarmonics//2]
     return yf
