@@ -4,7 +4,7 @@ import sys
 import argparse
 from pathlib import Path
 
-import src.he6_cres_spec_sims as spec_sims
+import he6_cres_spec_sims as spec_sims
 
 
 def main():
