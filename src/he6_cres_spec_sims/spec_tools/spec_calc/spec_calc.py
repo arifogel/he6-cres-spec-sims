@@ -26,6 +26,29 @@ from scipy.special import jv
 
 from he6_cres_spec_sims.constants import *
 
+
+
+
+
+def central_diff(f, x, dx=1e-6):
+    """
+    Central-difference 1st derivative to replace deprecated scipy.misc.derivative
+
+    Parameters
+    f: callable
+        function to take derivative of
+    x: float
+        point at which to take 1st derivative
+    dx: float, optional
+        Step size
+
+    Returns
+    float 
+        Approximation of 1st derivative of f at x
+    """
+    return (f(x + dx) - f(x - dx)) / (2 * dx)
+
+
 # Simple special relativity functions.
 
 
