@@ -33,10 +33,10 @@ class Physics:
 
         # Leave in if manually set
         if self.energy_acceptance_low not in self.config.physics.energy:
-            self.config.physics.energy["energy_acceptance_low"] = self.energy_acceptance_low
+            self.config.physics.energy["low"] = self.energy_acceptance_low
 
         if self.energy_acceptance_high not in self.config.physics.energy:
-            self.config.physics.energy["energy_acceptance_high"] = self.energy_acceptance_high
+            self.config.physics.energy["high"] = self.energy_acceptance_high
 
         # distribution of energies [eV]
         self.energy_distribution = self.config.dist_interface.get_distribution(self.config.physics.energy)

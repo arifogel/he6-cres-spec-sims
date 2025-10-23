@@ -45,7 +45,7 @@ class TrackBuilder:
 
         #create tracks for every event
         for event_index, event in trapped_event_df.iterrows():
-            if event_index % 25 == 0:
+            if event_index % 2500 == 0:
                 print("\nBuilding Event :", event_index)
 
             # Fill the event with computationally intensive properties.
@@ -174,8 +174,8 @@ class TrackBuilder:
         if center_theta > 90:
             center_theta = 180 - center_theta
 
-        # New energy:
-        energy = energy_stop - jump_size_eV
+        # New energy: (do not lose so much energy it becomes negative)
+        energy = np.clip(energy_stop - jump_size_eV, 1e-10, None)
 
         # New position and direction. Only center_theta is changing right now.
         beta_position, beta_direction = (

@@ -27,9 +27,6 @@ class DAQ:
         self.pts_per_fft = config.daq.freq_bins * 2
         self.freq_axis = np.linspace( 0, self.config.daq.freq_bw, self.config.daq.freq_bins)
 
-
-        self.antenna_z = 50  # Ohms
-
         self.slices_in_roach = int( config.daq.acq_length/ self.delta_t) # num slices in "data" (before averaging/tossing)
         self.slices_in_spec = int( config.daq.acq_length/ self.delta_t / self.config.daq.roach_avg) # num slices in file (after averaging/tossing)
 
@@ -96,7 +93,8 @@ class DAQ:
         #np.savetxt("gains.txt", G)
         #np.savetxt("tau.txt", self.noise_tau)
 
-        return np.sqrt(G/2.)
+        #return np.sqrt(G/2.)
+        return np.sqrt(G)
 
     def signal_gains(self, max_sideband_order, f, r=[0.10,0.10], L = [0.15,0.92]):
         gSignal = np.ones(shape=(max_sideband_order+1, f.size)) + 0j
@@ -137,11 +135,9 @@ class DAQ:
                 stop_slice = min(start_slice + self.slice_block, self.slices_in_roach)
 
                 num_slices = stop_slice - start_slice
-                requant_gain_scaling = 2**self.config.daq.requant_gain
 
                 #dimensions: slices x FFT bins
                 spec_array = self.get_signal_array( acq, start_slice, stop_slice)
-                spec_array *= np.sqrt( requant_gain_scaling)
 
                 #shape[1] is the number of slices, though by doing it like this, we handle automatically if
                 # roach_inverted_flag=True (so this is number of slices either before or after summing/tossing)
@@ -210,7 +206,7 @@ class DAQ:
             # TODO: Put back in time-dependence of amplitudes. Want to add in frequency-dependence too
             inds = (band.f(t[band_mask]) / self.delta_f).astype(int)
             #The abs is so you pick out the ORDER of the sidebands for the signal gain profile. Negative indices don't work here
-            voltage = np.sqrt(band.power * self.antenna_z) * self.signal_gain_array[abs(band.band)][inds]
+            voltage = np.sqrt(band.power) * self.signal_gain_array[abs(band.band)][inds]
             signal_time_series[band_mask] += voltage * np.sin( band.Phi(t[band_mask]))
 
         return signal_time_series.reshape((num_slices, self.pts_per_fft)).transpose()
@@ -224,15 +220,15 @@ class DAQ:
         slice_stop_time = stop_slice * self.delta_t
         num_slices = stop_slice - start_slice
 
-        fVaunix = self.config.daq.vaunix_bin * self.config.daq.freq_bw / self.config.daq.freq_bins
+        fVaunix = self.config.daq.trap_off_bin * self.config.daq.freq_bw / self.config.daq.freq_bins
         omegaVaunix = 2*np.pi*fVaunix
 
-        # vaunix power scaling given the axolotl controls (power in dB)
+        # recalibrated based on the rigol, not the vaunix, actually
         # Nick found this by setting voltage_off_time = 0, producing a spectrogram.
         # From https://drive.google.com/file/d/197czYZ2x9wSeNMNPTpIlJNUG2gTmIewV/view?usp=sharing (slide 11)
-        # we should get an average power in the spectrogram of 98.3 at input of -1 dB. Scale reference power accordingly
-        reference_power = 4.747e-6
-        voltage = np.sqrt(reference_power * self.antenna_z) * 10**(self.config.daq.vaunix_power_db / 20.)
+        # we should get an average power in the spectrogram of 86.8 at input of 870 mV. Scale reference power accordingly
+        reference_voltage_mv = 3403.71
+        voltage = self.config.daq.rigol_voltage_mv / reference_voltage_mv
 
         vaunix_time_series = np.zeros(self.pts_per_fft * num_slices)
         slices = self.ExB.get_voltage_on_slices(slice_start_time, slice_stop_time, self.pts_per_fft * num_slices)
@@ -251,7 +247,8 @@ class DAQ:
         """
         signal_time_series = self.get_signal_time_series(acq, start_slice, stop_slice)
         # LNA gain of 67dB (this should be a user parameter)
-        signal_time_series *= np.sqrt(1e9)
+        signal_time_series *= (2./np.sqrt(KB * self.config.daq.noise_temperature * self.config.daq.freq_bw)) #ortho
+
         signal_time_series += self.get_vaunix_time_series(acq, start_slice, stop_slice)
 
         #shape of signal_time_series: (pts_per_fft, num_slices). Conduct a 1d FFT along axis = 0 (the time axis).
@@ -263,7 +260,7 @@ class DAQ:
 
         Y_fft = np.fft.fft(signal_time_series, axis=0, norm="ortho")[:self.pts_per_fft // 2]
 
-        #Multiply the Fourier transform of all signals by the overall amplifier gain profile
+        #Multiply the Fourier transform of all signals by the overall amplifier gain profile: sqrt(G/2)
         #Y_fft shape (fourier bins x slices), gain shape (fourier bins x 1). Product multiplies each slice by gain
         Y_fft *= self.gain_overall_array[:,np.newaxis]
 
@@ -278,13 +275,6 @@ class DAQ:
         For the signal only, we will multiply by gain_tot(f), it is already included in the noise here
         Returns frequency-domain (with phase)
         """
-
-        delta_f_12 = 2.4e9 / 2**13
-
-        noise_power_scaling = self.delta_f / delta_f_12
-        requant_gain_scaling = (2**self.config.daq.requant_gain) / (2**self.config.daq.noise_file_gain)
-        noise_scaling = noise_power_scaling * requant_gain_scaling
-
         array_size = (num_slices, self.config.daq.freq_bins)
 
         # Additive white Gaussian noise has FFT which is complex Gaussian
@@ -296,8 +286,6 @@ class DAQ:
         # Want to scale so that mean power agrees with config (based on Chi-Squared k=2 for unsummed bins)
         tau_noise = 1./np.log(1 + 1./ self.noise_mean)
         noise_array *= np.sqrt(tau_noise /  2.)
-        # Scale by noise power
-        noise_array *= noise_scaling
 
         return noise_array
 

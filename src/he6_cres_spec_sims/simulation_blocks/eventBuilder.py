@@ -42,7 +42,7 @@ class EventBuilder:
             is_trapped = False
 
             while not is_trapped and beta_num < betas_to_simulate:
-                if beta_num % 250 == 0:
+                if beta_num % 2500 == 0:
                     print( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
                     print( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
 

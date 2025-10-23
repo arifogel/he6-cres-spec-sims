@@ -15,3 +15,4 @@ C = 299792458.  # Speed of light in vacuum (m/s)
 J_TO_EV = 6.241509074e18  # Joule-ev conversion
 EPS_0 = 8.8541878128 * 10**-12  # Vacuum Permittivity (F/m)
 MU_0 = 4 * PI * 1e-7
+KB = 1.380649e-23 #(J/K)
