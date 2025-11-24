@@ -22,18 +22,13 @@ class EventBuilder:
         # beta_num denotes the total number of betas produced in the trap.
         beta_num = 0
 
-        # if simulating full daq we instead use the beta monitor rate to determine the number of events we should be seeing
-        if self.config.settings.sim_daq==True:
-            events_to_simulate = self.physics.number_of_events()
-            betas_to_simulate = np.inf
-        else:
-            events_to_simulate = self.config.physics.events_to_simulate
-            betas_to_simulate = self.config.physics.betas_to_simulate
+        events_to_simulate = self.config.physics.events_to_simulate
+        betas_to_simulate = self.config.physics.betas_to_simulate
 
-            if events_to_simulate == -1:
-                events_to_simulate = np.inf
-            if betas_to_simulate == -1:
-                betas_to_simulate = np.inf
+        if events_to_simulate == -1:
+            events_to_simulate = np.inf
+        if betas_to_simulate == -1:
+            betas_to_simulate = np.inf
 
         print( f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
 
