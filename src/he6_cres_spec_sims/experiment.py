@@ -13,7 +13,7 @@ import he6_cres_spec_sims.simulation as sim
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
 import he6_cres_spec_sims.simulation_blocks.config
 
-#this function runs everything, previously in run_local_experiment.py script, 
+#this function runs everything, previously in run_local_experiment.py script,
 # putting it here allows you to more easily run experiments interactively
 def run_local_experiment(dict_path):
 
@@ -36,8 +36,10 @@ def run_local_experiment(dict_path):
 # Utility function:
 def get_experiment_dir(experiment_params: dict) -> Path:
     base_config_path = Path(experiment_params["base_config_path"])
-    experiment_name = experiment_params["experiment_name"]
     parent_dir = base_config_path.parents[0]
+    if "output_base_path" in experiment_params:
+        parent_dir = Path(experiment_params["output_base_path"])
+    experiment_name = experiment_params["experiment_name"]
     experiment_dir = parent_dir / experiment_name
     return experiment_dir
 
@@ -103,13 +105,7 @@ class Experiment:
             print("Created directory: {} ".format(experiment_dir))
 
         else:
-            print("Directory already exists: {} ".format(experiment_dir))
-            print(
-                "CAREFUL: Continuing will delete the contents of the above directory.\n"
-            )
-            input("Press Enter to continue...")
-            rmtree(experiment_dir)
-            experiment_dir.mkdir()
+            raise ValueError("Directory already exists: {} ".format(experiment_dir))
 
         # Grab data from experiment_params dict.
         isotope = experiment_params["isotope"]
@@ -155,9 +151,7 @@ class Experiment:
         experiment_dir = get_experiment_dir(experiment_params)
 
         # Define path for experiment config.
-        experiment_config = experiment_dir / (
-            experiment_params["experiment_name"] + "_exp.yaml"
-        )
+        experiment_config = experiment_dir / ( experiment_params["experiment_name"] + "_exp.yaml")
 
         with open(experiment_config, "w") as f:
             yaml.dump(experiment_params, f, default_flow_style=False, sort_keys=False)
