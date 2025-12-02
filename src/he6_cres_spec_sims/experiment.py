@@ -35,10 +35,10 @@ def run_local_experiment(dict_path):
 
 # Utility function:
 def get_experiment_dir(experiment_params: dict) -> Path:
+    if "output_path" in experiment_params:
+        return Path(experiment_params["output_path"])
     base_config_path = Path(experiment_params["base_config_path"])
     parent_dir = base_config_path.parents[0]
-    if "output_base_path" in experiment_params:
-        parent_dir = Path(experiment_params["output_base_path"])
     experiment_name = experiment_params["experiment_name"]
     experiment_dir = parent_dir / experiment_name
     return experiment_dir
