@@ -72,11 +72,18 @@ def get_config_paths(experiment_params: dict) -> List[Path]:
 
 
 class Experiment:
-    def __init__(self, experiment_params: dict) -> None:
+    def __init__(self, experiment_params: dict, config_dict = None) -> None:
 
         self.experiment_params = experiment_params
 
+        self.config_dict = None
+        if config_dict is not None:
+            self.load_config_yaml(config_dict)
+
         self.run_experiment(self.experiment_params)
+
+    def load_config_yaml(self, yaml_config_dict: dict) -> None:
+        self.config_dict = yaml_config_dict
 
     def run_experiment(self, experiment_params: dict) -> None:
 
@@ -126,8 +133,12 @@ class Experiment:
             copyfile(base_config_path, config_path)
 
             # Open the config file and grab the contents.
-            with open(config_path, "r") as f:
-                config_dict = yaml.load(f, Loader=yaml.FullLoader)
+            config_dict = None
+            if self.config_dict is None:
+                with open(config_path, "r") as f:
+                    config_dict = yaml.load(f, Loader=yaml.FullLoader)
+            else:
+                config_dict = self.config_dict
 
             # Make the appropriate alterations to the config_dict
             # For seed = None, rng pulls from hardware entropy
