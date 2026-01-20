@@ -5,9 +5,8 @@ import pathlib
 import time
 
 import numpy as np
-from scipy.interpolate import interp2d
+from scipy.interpolate import RegularGridInterpolator, RectBivariateSpline
 from scipy.misc import derivative
-
 
 class Field_profile:
     """
@@ -221,13 +220,15 @@ class Field_profile:
             print("Writing the map_array to csv. \npkl_path: ", pkl_path)
 
         # Now use the map_array to do the interpolation.
-        B_interp2d = interp2d(rho_array, z_array, map_array, kind="cubic")
+        map_array = np.transpose(map_array)
+        B_interp2d = RectBivariateSpline(rho_array, z_array, map_array)
+
+        #return evaluation function for use
 
         # Making it vectorized, meaning float or np array can be inputs.
-        def B_interp(rho, z):
-            return B_interp2d(rho, z)[0]
+        B_interp = B_interp2d.ev
 
-        self.field_strength_interpolated_function = np.vectorize(B_interp)
+        self.field_strength_interpolated_function = B_interp
 
         return None
 

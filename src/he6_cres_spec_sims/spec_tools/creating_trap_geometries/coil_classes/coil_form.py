@@ -3,6 +3,7 @@ import numpy as np
 from scipy.integrate import romberg
 from scipy.misc import derivative
 
+from he6_cres_spec_sims.constants import *
 
 class Coil_form:
     """
