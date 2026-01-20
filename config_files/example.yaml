@@ -2,18 +2,17 @@
 # if sim_daq: you must specify number acquisitions and acquisition time and event rates.
 
 Settings:
-    rand_seed: 715
-    sim_daq: True #If true will simulate daq and create spec file, if false no need to fill out daq section
+    rand_seed: 716
+    sim_daq: False #If true will simulate daq and create spec file, if false no need to fill out daq section
 
 Physics:
     events_to_simulate : 100 #if sim_daq==True will instead calculate appropriate event rate for each spec file
-    betas_to_simulate : 100
-    beta_rate: 5.0e+2
+    betas_to_simulate : 1000
     freq_acceptance_low: 17.0e+9 #Note: this is the "extended bandwidth" corresponding to energies where betas can be born. Decreasing low is more important than increasing high.
     freq_acceptance_high: 20.8e+9
     energy:
         distribution: "fixed"
-        value: 1095686.43582905
+        value: 936150.1826851165
     rho:
         distribution: "uniform_annulus"
         rho_min : 0.0
@@ -34,7 +33,7 @@ TrackBuilder:
     start_time:
         distribution: "uniform"
         low: 0
-        high: 0.20
+        high: 0.05
     track_length:
         distribution: "exponential"
         tau: 5.0e-3
@@ -51,7 +50,7 @@ TrackBuilder:
     voltage_fractional_offset: 0.1 #Eventually make a distribution?
 
 SideBandBuilder:
-    sideband_num: 5
+    sideband_num: 3
     frac_total_track_power_cut : 0.01
     harmonic_sidebands: False
     magnetic_modulation: True
@@ -60,7 +59,7 @@ DMTrackBuilder:
     mixer_freq: 17.9e+9
 
 DAQ:
-    acq_length: 0.25 #file duration in [s]
+    acq_length: 1.0 #file duration in [s]
     n_acquisitions: 1 #For N seconds of data per run, TrackBuilder::start_time should be uniformly distributed from 0 to acq_length
     freq_bw: 2.4e+9
     freq_bins: 8192
@@ -71,10 +70,10 @@ DAQ:
     noise_paths: #list of paths to .spec files. If not included or do not exist, default to white noise, constant gain
          - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2025-07-24-15-10-25-283_0.spec"
          - "/Users/buzinsky/Builds/DAQ/He6DAQ/pyqt5_GUI/temp/Freq_data_2025-07-24-15-10-25-283_1.spec"
-    noise_temperature: 64.123
+    noise_temperature: 64.
     spec_prefix: "SNR_dev"
     #Warning , zero-suppression + roach_inverted_flag=False + roach_avg > 2 is super slow due to thresholds not being set for that case. Just do .spec
     spec_suffix: "speck"
-    threshold_factor: 7
+    threshold_factor: 6
     trap_off_bin: 301.03 #not necessarily perfect tuning to Fourier bin
     rigol_voltage_mv: 870.0
