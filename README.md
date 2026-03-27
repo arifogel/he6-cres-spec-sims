@@ -230,8 +230,27 @@ One can find an example of this config file here: `/he6-cres-spec-sims/config_fi
 --------------------------------------------------------------------------------
 
 ### Simulation Blocks
+* **Band:**
+    * Base class for different types of bands (class wrapper for inter-scatter CRES signals, distinguished from the underlying betas) 
+* **Config:**
+    * A class used to contain the field map and configurable parameters associated with a given simulation configuration file (for example: config_example.json).
+* **Physics:**
+    * Creates distributions of beta kinematic parameters (position, velocity) according to the chosen distributions
+* **DAQ:**
+    * If called, this module  passes through list of downmixed bands through the DAQ, producing fake .spec(k) files. These can be passed through Katydid, identically to data
+* **EventBuilder:**
+    * Constructs a list of betas which are trapped within the detector volume (doesn’t hit waveguide walls and pitch angle is magnetically trapped)
+* **SegmentBuilder:**
+    * Constructs a list of betas which are trapped within the detector volume (doesn’t hit waveguide walls and pitch angle is magnetically trapped)
+* **TrackBuilder:**
+    * Assigns track truth parameters (e.g. start/ end times, frequencies) to created tracks
+* **DMTrackBuilder:**
+    * Downmixes freq\_start and freq\_stop of simulated tracks to observed frequency band out of DAQ
+* **SideBandBuilder:**
+    * Creates distributions of beta kinematic parameters (position, velocity) according to the chosen distributions
 
-FILL IN. Need descriptions of what each block of the simulation does. 
+
+FILL IN. Need more complete descriptions of what each block of the simulation does/docstrings. 
 --------------------------------------------------------------------------------
 ## Documentation for tracks output: 
 
