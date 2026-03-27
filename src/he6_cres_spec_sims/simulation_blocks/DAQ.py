@@ -96,7 +96,7 @@ class DAQ:
         #return np.sqrt(G/2.)
         return np.sqrt(G)
 
-    def signal_gains(self, max_sideband_order, f, r=[0.10,0.10], L = [0.15,0.92]):
+    def signal_gains(self, max_sideband_order, f, r=[0.015,0.025], L = [90.49e-3,941.95e-3]):
         gSignal = np.ones(shape=(max_sideband_order+1, f.size)) + 0j
         #perhaps there is a cleaner/clearer/more clever way to do this. Sum over reflective surfaces, compute for each sideband
         #(-1)^s only valid exactly for harmonic traps

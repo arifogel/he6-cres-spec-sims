@@ -80,6 +80,7 @@ class TrackBuilder:
 
                 tracks[track_num]["track_length"] = self.track_length_distribution.generate()
                 tracks[track_num]["end_time"] =  tracks[track_num]["start_time"] + tracks[track_num]["track_length"]
+                tracks[track_num]["end_time_in_trap_acq"] = self.ExB.time_in_trap_acq(tracks[track_num]["end_time"])
 
                 #Determine whether scatter time or exb happens sooner, adjust end_time and track_length as necessary
                 #Recompute track_length for tracks that are cleared out by ExB as now track_length != scatter_time

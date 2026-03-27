@@ -117,6 +117,7 @@ class EventBuilder:
             "start_time": np.nan,
             "end_time": np.nan,
             "start_time_in_trap_acq": np.nan,
+            "end_time_in_trap_acq": np.nan,
             "zmax": 0.0,
             "axial_freq": 0.0,
             "grad_b_freq": 0.0,
