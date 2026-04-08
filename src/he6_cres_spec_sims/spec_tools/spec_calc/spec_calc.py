@@ -21,13 +21,9 @@ import numpy as np
 import scipy.integrate as integrate
 from scipy.fft import fft
 from scipy.optimize import root_scalar
-from scipy.misc import derivative
 from scipy.special import jv
 
 from he6_cres_spec_sims.constants import *
-
-
-
 
 
 def central_diff(f, x, dx=1e-6):
@@ -48,7 +44,6 @@ def central_diff(f, x, dx=1e-6):
     """
     return (f(x + dx) - f(x - dx)) / (2 * dx)
 
-
 # Simple special relativity functions.
 
 
@@ -68,6 +63,7 @@ def momentum(energy):
 def velocity(energy):
     velocity = momentum(energy) / (gamma(energy) * M)
     return velocity
+
 
 
 # CRES functions.
@@ -566,7 +562,7 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
     Bmin = trap_profile.field_strength(rho, 0)
     mu = p0**2 * np.sin(center_pitch_angle / RAD_TO_DEG )**2 / (2. * M * Bmin)
     Bz = lambda z: trap_profile.field_strength(rho,z)
-    dBdz = lambda z: derivative(Bz, z, dx=1e-6)
+    dBdz = lambda z: central_diff(Bz, z, dx=1e-6)
     ### Coupled ODE for z-motion: z = y[0], vz = y[1]. z'=vz. vz' = -mu * B'(z) / m
     ode = lambda t, y: [y[1], - mu / M * dBdz(y[0])]
     result = integrate.solve_ivp(ode, [t[0], t[-1]], (zmax, 0), t_eval=t,rtol=1e-7)
