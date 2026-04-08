@@ -88,18 +88,17 @@ class Config:
                 config_dict = yaml.load(read_file, Loader=yaml.FullLoader)
 
                 if self.daq_only:
-                    self.daq = DotDict(config_dict["Daq"])
+                    self.daq = DotDict(config_dict["DAQ"])
 
                 else:
                     # Take config parameters from config_file.
                     self.settings = DotDict(config_dict["Settings"])
                     self.physics = DotDict(config_dict["Physics"])
                     self.eventbuilder = DotDict(config_dict["EventBuilder"])
-                    self.segmentbuilder = DotDict(config_dict["SegmentBuilder"])
-                    self.bandbuilder = DotDict(config_dict["BandBuilder"])
                     self.trackbuilder = DotDict(config_dict["TrackBuilder"])
+                    self.sidebandbuilder = DotDict(config_dict["SideBandBuilder"])
                     self.downmixer = DotDict(config_dict["DMTrackBuilder"])
-                    self.daq = DotDict(config_dict["Daq"])
+                    self.daq = DotDict(config_dict["DAQ"])
 
                 print("Seed: "+str(self.settings.rand_seed))
                 self.dist_interface = DistributionInterface(self.settings.rand_seed)

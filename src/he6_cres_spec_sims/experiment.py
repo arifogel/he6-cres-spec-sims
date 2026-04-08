@@ -13,7 +13,7 @@ import he6_cres_spec_sims.simulation as sim
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
 import he6_cres_spec_sims.simulation_blocks.config
 
-#this function runs everything, previously in run_local_experiment.py script, 
+#this function runs everything, previously in run_local_experiment.py script,
 # putting it here allows you to more easily run experiments interactively
 def run_local_experiment(dict_path):
 
@@ -35,9 +35,11 @@ def run_local_experiment(dict_path):
 
 # Utility function:
 def get_experiment_dir(experiment_params: dict) -> Path:
+    if "output_path" in experiment_params:
+        return Path(experiment_params["output_path"])
     base_config_path = Path(experiment_params["base_config_path"])
-    experiment_name = experiment_params["experiment_name"]
     parent_dir = base_config_path.parents[0]
+    experiment_name = experiment_params["experiment_name"]
     experiment_dir = parent_dir / experiment_name
     return experiment_dir
 
@@ -70,11 +72,18 @@ def get_config_paths(experiment_params: dict) -> List[Path]:
 
 
 class Experiment:
-    def __init__(self, experiment_params: dict) -> None:
+    def __init__(self, experiment_params: dict, config_dict = None) -> None:
 
         self.experiment_params = experiment_params
 
+        self.config_dict = None
+        if config_dict is not None:
+            self.load_config_yaml(config_dict)
+
         self.run_experiment(self.experiment_params)
+
+    def load_config_yaml(self, yaml_config_dict: dict) -> None:
+        self.config_dict = yaml_config_dict
 
     def run_experiment(self, experiment_params: dict) -> None:
 
@@ -103,13 +112,7 @@ class Experiment:
             print("Created directory: {} ".format(experiment_dir))
 
         else:
-            print("Directory already exists: {} ".format(experiment_dir))
-            print(
-                "CAREFUL: Continuing will delete the contents of the above directory.\n"
-            )
-            input("Press Enter to continue...")
-            rmtree(experiment_dir)
-            experiment_dir.mkdir()
+            raise ValueError("Directory already exists: {} ".format(experiment_dir))
 
         # Grab data from experiment_params dict.
         isotope = experiment_params["isotope"]
@@ -130,8 +133,12 @@ class Experiment:
             copyfile(base_config_path, config_path)
 
             # Open the config file and grab the contents.
-            with open(config_path, "r") as f:
-                config_dict = yaml.load(f, Loader=yaml.FullLoader)
+            config_dict = None
+            if self.config_dict is None:
+                with open(config_path, "r") as f:
+                    config_dict = yaml.load(f, Loader=yaml.FullLoader)
+            else:
+                config_dict = self.config_dict
 
             # Make the appropriate alterations to the config_dict
             # For seed = None, rng pulls from hardware entropy
@@ -155,9 +162,7 @@ class Experiment:
         experiment_dir = get_experiment_dir(experiment_params)
 
         # Define path for experiment config.
-        experiment_config = experiment_dir / (
-            experiment_params["experiment_name"] + "_exp.yaml"
-        )
+        experiment_config = experiment_dir / ( experiment_params["experiment_name"] + "_exp.yaml")
 
         with open(experiment_config, "w") as f:
             yaml.dump(experiment_params, f, default_flow_style=False, sort_keys=False)

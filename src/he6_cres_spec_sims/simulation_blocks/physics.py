@@ -21,11 +21,15 @@ class Physics:
         main_field = self.config.eventbuilder.main_field
         freq_acceptance_high = self.config.physics.freq_acceptance_high
         freq_acceptance_low = self.config.physics.freq_acceptance_low
-        if freq_acceptance_high <= freq_acceptance_low:
-            raise ValueError("Frequency Acceptance Low must be < Frequency Acceptance High!")
 
         self.energy_acceptance_low = sc.freq_to_energy( freq_acceptance_high, main_field)
         self.energy_acceptance_high = sc.freq_to_energy( freq_acceptance_low, main_field)
+
+        self.energy_acceptance_low = np.clip(self.energy_acceptance_low, 0, None)
+        self.energy_acceptance_high = np.clip(self.energy_acceptance_high, 0, None)
+
+        if self.energy_acceptance_high <= self.energy_acceptance_low:
+            raise ValueError("Energy Acceptance Low must be < Energy Acceptance High! Change Frequency acceptances!")
 
         # Leave in if manually set
         if self.energy_acceptance_low not in self.config.physics.energy:
@@ -80,11 +84,3 @@ class Physics:
         direction = [sphere_theta_initial, sphere_phi_initial]
 
         return position, direction
-
-    def number_of_events(self):
-        # determine number of events needed to simulate
-        # TODO: option to do this using empirical beta rate to cres rate function,
-        beta_rate = self.config.physics.beta_rate
-        cres_ratio = self.fraction_of_spectrum
-        cres_rate = beta_rate*cres_ratio
-        return cres_rate*self.config.daq.n_files*self.config.daq.spec_length

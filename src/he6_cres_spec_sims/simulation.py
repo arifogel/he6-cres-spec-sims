@@ -8,10 +8,10 @@ and saved to a .csv and run them through the DAQ, as it is the calculation of th
 
 The general approach is that pandas dataframes, each row describing a single CRES data object (event, segment,
   band, or track), are passed between the blocks, each block adding complexity to the simulation.
- This general structure is broken by the last classe (Daq) which (optionally) creates the binary .spec(k) file
+ This general structure is broken by the last class (DAQ) which (optionally) creates the binary .spec(k) file
 output. This .spec(k) file can then be fed into Katydid just as real data would be.
 
-Classes contained in module: 
+Classes contained in module:
 
     * Simulation
     * Results
@@ -19,13 +19,13 @@ Classes contained in module:
 """
 
 import pandas as pd
+from numpy import hstack
 
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
 import he6_cres_spec_sims.simulation_blocks.config
 import he6_cres_spec_sims.simulation_blocks.eventBuilder
-import he6_cres_spec_sims.simulation_blocks.segmentBuilder
-import he6_cres_spec_sims.simulation_blocks.bandBuilder
 import he6_cres_spec_sims.simulation_blocks.trackBuilder
+import he6_cres_spec_sims.simulation_blocks.sideBandBuilder
 import he6_cres_spec_sims.simulation_blocks.dmTrackBuilder
 import he6_cres_spec_sims.simulation_blocks.DAQ
 
@@ -40,24 +40,22 @@ class Simulation:
     def run_full(self):
         # Initialize all simulation blocks.
         eventbuilder = sim_blocks.eventBuilder.EventBuilder(self.config)
-        segmentbuilder = sim_blocks.segmentBuilder.SegmentBuilder(self.config)
-        bandbuilder = sim_blocks.bandBuilder.BandBuilder(self.config)
         trackbuilder = sim_blocks.trackBuilder.TrackBuilder(self.config)
+        sidebandbuilder = sim_blocks.sideBandBuilder.SideBandBuilder(self.config)
         dmtrackbuilder = sim_blocks.dmTrackBuilder.DMTrackBuilder(self.config)
         if self.config.settings.sim_daq:
             daq = sim_blocks.DAQ.DAQ(self.config)
 
-        events = eventbuilder.run()
-        segments = segmentbuilder.run(events)
-        bands = bandbuilder.run(segments)
-        tracks = trackbuilder.run(bands)
-        dmtracks = dmtrackbuilder.run(tracks)
+        tracks_df = eventbuilder.run()
+        tracks_df, bands = trackbuilder.run(tracks_df)
+        bands = sidebandbuilder.run(tracks_df, bands)
+        downmixed_tracks_df = dmtrackbuilder.run(tracks_df, bands)
         if self.config.settings.sim_daq:
-            spec_array = daq.run(dmtracks)
+            spec_array = daq.run(bands)
 
         # Save the results of the simulation:
-        # For now only write dmtracks to keep things lightweight.
-        results = Results(dmtracks)
+        # For now only write downmixed_tracks to keep things lightweight.
+        results = Results(downmixed_tracks_df, bands)
         results.save(self.config_path)
 
         return None
@@ -75,7 +73,7 @@ class Simulation:
         daq = sim_blocks.DAQ(self.config)
         specbuilder = sim_blocks.SpecBuilder(self.config, self.config_path)
 
-        # Simulate the action of the Daq on the loaded dmtracks.
+        # Simulate the action of the DAQ on the loaded dmtracks.
         spec_array = daq.run(results.dmtracks)
         specbuilder.run(spec_array)
 
@@ -86,8 +84,9 @@ class Results:
         to and from a csv with a set name
     """
 
-    def __init__(self, dmtracks):
+    def __init__(self, dmtracks, bands=None):
         self.dmtracks = dmtracks
+        self.bands = bands
 
     def get_path_name(self, config_path):
         config_name = config_path.stem
@@ -96,8 +95,11 @@ class Results:
         return results_dir
 
     def save(self, config_path):
-        # Only writing these dmtracks to make the simulations more lightweight
         results_dict = { "dmtracks": self.dmtracks }
+
+        if self.bands is not None:
+            df_bands = pd.DataFrame([band.to_dict() for band in hstack(self.bands) if not band.outside_BW])
+            results_dict["bands"] = df_bands
 
         # First make a results_dir with the same name as the config.
         results_dir = self.get_path_name(config_path)

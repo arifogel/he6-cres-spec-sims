@@ -348,7 +348,8 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
 
-        # See write-ups XXX for more information on this integral
+        # See write-up for more information on this integral
+        #https://drive.google.com/file/d/1OLoIebHWi85fKBwdb-ogjzwD9LblOv0u/view?usp=drive_link
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1]
         # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
@@ -410,7 +411,8 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         # Should optionally pass these in as argument to reuse calculations!
         f_a = axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints)
 
-        # See write-ups XXX for more information on this integral
+        # See write-ups for more information on this integral
+        #https://drive.google.com/file/d/1OLoIebHWi85fKBwdb-ogjzwD9LblOv0u/view?usp=drive_link
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1]
         # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
@@ -461,7 +463,8 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         # Should optionally pass these in as argument to reuse calculations!
         zmax = max_zpos(energy, center_pitch_angle, rho, trap_profile)
 
-        # See write-ups XXX for more information on this integral
+        # See write-ups for more information on this integral
+        #https://drive.google.com/file/d/1OLoIebHWi85fKBwdb-ogjzwD9LblOv0u/view?usp=drive_link
         u = np.linspace(0,1., nIntegralPoints)
         du = u[1]
         # Semi-open simpsons rule avoids evaluation at t=0. Just replace with next entry (semi-open)
@@ -492,7 +495,7 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
 
 
 def waveguide_beta(omega):
-    """  Computes the (waveguide definition) of beta (propagation constant for TE11 mode
+    """  Computes the (waveguide definition) of beta (propagation constant for TE11 mode)
     """
     # fixed experiment parameters
     waveguide_radius = 0.578e-2
@@ -597,6 +600,11 @@ def FFT_sideband_amplitudes(energy, rho, avg_cycl_freq, axial_freq, vz, z, trap_
     omega_c -= np.mean(omega_c)
     Phi = np.cumsum(omega_c) * dt
     expPhi = np.exp(1j * Phi)
+
+    #multiply by v_perp / vtot = sqrt(vtot^2 - vz^2) / vtot
+    vtot = velocity(energy)
+    expPhi *= np.sqrt( 1. - (vz/vtot)**2)
+
     yf = np.abs(fft(expPhi,norm="forward"))
     yf = yf[:nHarmonics//2]
     return yf
@@ -623,7 +631,6 @@ def power_larmor(field, frequency):
     energy = freq_to_energy(frequency, field)
     r_c = cyc_radius(energy, field, 90)
     beta = velocity(energy) / C
-    p = gamma(energy) * M * velocity(energy)
 
     power_larmor = (2 / 3 * Q**2 * C * beta**4 * gamma(energy) ** 4) / (
         4 * PI * EPS_0 * r_c**2
@@ -636,7 +643,6 @@ def power_larmor_e(field, energy):
 
     r_c = cyc_radius(energy, field, 90)
     beta = velocity(energy) / C
-    p = gamma(energy) * M * velocity(energy)
 
     power_larmor = (2 / 3 * Q**2 * C * beta**4 * gamma(energy) ** 4) / (
         4 * PI * EPS_0 * r_c**2
