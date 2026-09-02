@@ -6,10 +6,12 @@ load("@aspect_rules_py//py:defs.bzl", "py_binary", "py_library")
 py_library(
     name = "he6_cres_spec_sims",
     srcs = glob(["**/*.py"]),
+    imports = [".."],
     visibility = ["//visibility:public"],
     deps = cdeps([
         requirement("argparse"),
         requirement("awkward-pandas"),
+        requirement("natsort"),
         requirement("pandas"),
         requirement("psycopg2-binary"),
         requirement("pytz"),
