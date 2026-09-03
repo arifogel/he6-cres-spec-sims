@@ -4,6 +4,7 @@ import numpy as np
 from time import process_time
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
+from shutil import rmtree
 
 import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
 from he6_cres_spec_sims.spec_tools.spec_calc.spec_calc import waveguide_beta
@@ -334,10 +335,10 @@ class DAQ:
         return file_paths
 
     def safe_mkdir(self, new_dir):
-        # If new_dir doesn't exist, then create it.
-        if not new_dir.is_dir():
-            new_dir.mkdir()
-            print("created directory : ", new_dir)
+        if new_dir.exists():
+            rmtree(new_dir)
+        new_dir.mkdir()
+        print("created directory : ", new_dir)
 
     def create_results_dir(self):
         # First make a results_dir with the same name as the config.
