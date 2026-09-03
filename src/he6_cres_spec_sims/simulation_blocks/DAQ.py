@@ -335,9 +335,7 @@ class DAQ:
         return file_paths
 
     def safe_mkdir(self, new_dir):
-        if new_dir.exists():
-            rmtree(new_dir)
-        new_dir.mkdir()
+        new_dir.mkdir(parents=True, exist_ok=True)
         print("created directory : ", new_dir)
 
     def create_results_dir(self):
