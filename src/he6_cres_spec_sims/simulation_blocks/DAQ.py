@@ -114,6 +114,16 @@ class DAQ:
         # Flatten into a 1D NumPy array
         self.bands = np.hstack(bands)
 
+        # Precompute per-band attribute arrays once, up front, so that the
+        # per-chunk "which bands are alive right now" filter in
+        # get_signal_time_series() can be a vectorized numpy comparison
+        # instead of a pure-Python attribute-access loop over every band in
+        # the simulation, repeated on every chunk of every acquisition.
+        self._band_outside_bw = np.array([b.outside_BW for b in self.bands], dtype=bool)
+        self._band_acquisition = np.array([b.acquisition for b in self.bands])
+        self._band_start_time = np.array([b.start_time for b in self.bands], dtype=float)
+        self._band_end_time = np.array([b.end_time for b in self.bands], dtype=float)
+
         # Define a random phase for each band. Need to be associated per track (lasting multiple chunks)
         # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from
         # initial particle position. Different bands in the same event have correlated phases depending on z0
@@ -185,12 +195,14 @@ class DAQ:
         signal_time_series = np.zeros(shape=self.pts_per_fft * num_slices)
 
         # shape of signal_alive_condition: num_bands
-        signal_alive_condition = np.where([(
-            (b.outside_BW == False)
-            & (b.acquisition == acq)
-            & (b.start_time <= slice_stop_time)
-            & (b.end_time >= slice_start_time))
-            for b in self.bands])[0]
+        # Vectorized equivalent of the per-band Python loop this used to be;
+        # see the precomputed _band_* arrays built once in run().
+        signal_alive_condition = np.where(
+                (~self._band_outside_bw)
+                & (self._band_acquisition == acq)
+                & (self._band_start_time <= slice_stop_time)
+                & (self._band_end_time >= slice_start_time)
+        )[0]
 
         eligible_bands = self.bands[signal_alive_condition]
 
@@ -451,34 +463,50 @@ class DAQ:
 
         slices_in_spec, freq_bins_in_spec = spec_array.shape
 
-        # Append mostly empty packet header to data
-        header = np.zeros(32)
-
-        # Append empty (zero) footer. 3 zeros signals end of spectrogram slice
-        footer = np.zeros(3)
-
         if self.config.daq.threshold_factor is None or self.config.daq.threshold_factor < 0:
-                raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
-
-        data = np.array([])
+            raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
 
         #initial index (e.g. 0 or 4096 for channels 0,1) in thresholds to compare to
         jThreshold0 = channel * freq_bins_in_spec
         thresholds = self.thresholds[jThreshold0:jThreshold0+freq_bins_in_spec]
 
+        # NOTE: previously this built up `data` via repeated np.append() calls in a
+        # nested Python loop. np.append() reallocates and copies the *entire* array
+        # on every call, so that pattern was O(n^2) in the number of bytes written
+        # and dominated the runtime. Here we instead collect each slice's bytes as
+        # small numpy arrays in a plain Python list (O(1) amortized append) and do
+        # a single np.concatenate() at the end. Output byte layout is unchanged.
+        chunks = []
+
+        header = np.zeros(32, dtype="uint8")
+        footer = np.zeros(3, dtype="uint8")
+
+        for s in range(slices_in_spec):
+            header[9:12] = self.packet_num_base_256(initial_packet + s)
+            chunks.append(header.copy())
+
+            # select indices of spectrogram [0-4096] above threshold
+            indices = np.where(spec_array[s] > thresholds)[0]
+            if indices.size:
+                # add_high_power_point(j) == [j // 256, j % 256]; vectorize that encoding
+                idx_hi = (indices // 256).astype("uint8")
+                idx_lo = (indices % 256).astype("uint8")
+                powers = spec_array[s][indices].astype("uint8")
+
+                # interleave into [hi, lo, power, hi, lo, power, ...] to match the
+                # original per-index write order
+                triplets = np.empty((indices.size, 3), dtype="uint8")
+                triplets[:, 0] = idx_hi
+                triplets[:, 1] = idx_lo
+                triplets[:, 2] = powers
+                chunks.append(triplets.reshape(-1))
+
+            chunks.append(footer)
+
+        data = np.concatenate(chunks).astype("uint8")
+
         # Pass "ab" to append to a binary file
         with open(speck_file_path, "ab") as speck_file:
-            for s in range(slices_in_spec):
-                header[9:12] = self.packet_num_base_256(initial_packet + s)
-                data = np.append(data, header)
-                # select indices of spectrogram [0-4096] above threshold. Loop is slow!
-                indices = np.where(spec_array[s] >  thresholds)[0]
-                for j in indices:
-                    data = np.append(data, self.add_high_power_point(j))
-                    data = np.append(data, spec_array[s][j])
-                data = np.append(data, footer)
-
-            data = data.flatten().astype("uint8")
             data.tofile(speck_file)
 
         #fractionHighPowerPoints =  (len(data) - (len(header) + len(footer))  * slices_in_spec)  / (slices_in_spec * freq_bins_in_spec)
