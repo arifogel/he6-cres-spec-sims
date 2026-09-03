@@ -107,12 +107,11 @@ class Experiment:
         experiment_dir = get_experiment_dir(experiment_params)
 
         # Make the experiments_dir if it doesn't exist. May want to delete contents here?
-        if not experiment_dir.is_dir():
-            experiment_dir.mkdir()
-            print("Created directory: {} ".format(experiment_dir))
-
-        else:
-            raise ValueError("Directory already exists: {} ".format(experiment_dir))
+        if experiment_dir.is_dir():
+            rmtree(experiment_dir)
+            print("Deleted existing experiment directory: {} ".format(experiment_dir))
+        experiment_dir.mkdir()
+        print("Created directory: {} ".format(experiment_dir))
 
         # Grab data from experiment_params dict.
         isotope = experiment_params["isotope"]

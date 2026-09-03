@@ -6,6 +6,11 @@ load("@aspect_rules_py//py:defs.bzl", "py_binary", "py_library")
 py_library(
     name = "he6_cres_spec_sims",
     srcs = glob(["**/*.py"]),
+    data = [
+        ":spec_tools/distributions/Data/He6.json",
+        ":spec_tools/distributions/Data/Ne19.json",
+        ":spec_tools/trap_field_profile_pkl/2021_trap_profile_mainfield_0T_trap_1A.csv",
+    ],
     imports = [".."],
     visibility = ["//visibility:public"],
     deps = cdeps([
