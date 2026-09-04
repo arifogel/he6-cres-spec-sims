@@ -35,8 +35,15 @@ class DAQ:
         self.n_channels = self.config.daq.n_channels #1 or 2, for lower/ upper halves of spectrogram
         self.bins = [slice(0,4096), slice(4096,8192)] #which frequency bins to write for each channel
 
-        # This block size is used to create chunks of spec file that don't overwhelm the ram.
-        self.slice_block = int(250 * 32768 / config.daq.freq_bins) * self.config.daq.roach_avg
+
+        # Optionally overridden via config.daq.slice_block (e.g. for tuning
+        # chunk size against cache behavior); defaults to the formula below
+        # if not set in the yaml config, matching all existing behavior.
+        if config.daq.slice_block is not None:
+                self.slice_block = int(config.daq.slice_block)
+        else:
+            # This block size is used to create chunks of spec file that don't overwhelm the ram.
+            self.slice_block = int(250 * 32768 / config.daq.freq_bins) * self.config.daq.roach_avg
 
         #pre-allocate this so that I do not have to keep creating linspace times
         self.t = np.linspace(0, self.slice_block*self.delta_t, self.pts_per_fft*self.slice_block)
@@ -108,9 +115,14 @@ class DAQ:
 
         return np.abs(gSignal)
 
-    def run(self, bands):
+    def run(self, bands, max_chunks=None):
         """
         This function is responsible for building out the spec files and calling the below methods.
+        max_chunks: if set, stops after processing this many chunks total
+        (across all acquisitions) instead of the full acq_length. Intended
+        for quick timing trials (e.g. comparing slice_block candidates)
+        without waiting for a full acquisition; leave unset (None) for
+        normal, complete runs -- default behavior is unchanged.
         """
         # Flatten into a 1D NumPy array
         self.bands = np.hstack(bands)
@@ -137,6 +149,7 @@ class DAQ:
 
         spec_array = np.zeros(shape=(self.slice_block, self.config.daq.freq_bins))
         initial_packet = 0
+        chunks_processed = 0
 
         for acq in range(self.n_acquisitions):
             print( f"Building spec acquistion {acq}. {self.config.daq.acq_length} s, {self.slices_in_spec} slices.")
@@ -176,8 +189,15 @@ class DAQ:
                 initial_packet += spec_array.shape[0]
                 initial_packet = initial_packet % 2**20
 
+                chunks_processed += 1
+                if max_chunks is not None and chunks_processed >= max_chunks:
+                        break
+
             build_file_stop = process_time()
             print( f"Time to build acq {acq}: {build_file_stop- build_file_start:.3f} s \n")
+
+            if max_chunks is not None and chunks_processed >= max_chunks:
+                break
 
         print("Done building {} files. ".format(self.config.daq.spec_suffix))
 
