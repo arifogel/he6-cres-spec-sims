@@ -72,7 +72,7 @@ def get_config_paths(experiment_params: dict) -> List[Path]:
 
 
 class Experiment:
-    def __init__(self, experiment_params: dict, config_dict = None) -> None:
+    def __init__(self, experiment_params: dict, config_dict = None, generate_configs_only: bool = False) -> None:
 
         self.experiment_params = experiment_params
 
@@ -80,12 +80,12 @@ class Experiment:
         if config_dict is not None:
             self.load_config_yaml(config_dict)
 
-        self.run_experiment(self.experiment_params)
+        self.run_experiment(self.experiment_params, generate_configs_only=generate_configs_only)
 
     def load_config_yaml(self, yaml_config_dict: dict) -> None:
         self.config_dict = yaml_config_dict
 
-    def run_experiment(self, experiment_params: dict) -> None:
+    def run_experiment(self, experiment_params: dict, generate_configs_only: bool = False) -> None:
 
         # Make all the config files specified by the experiment dictionary.
         self.create_configs_for_experiment(experiment_params)
@@ -96,9 +96,11 @@ class Experiment:
         # Collect all the config path names.
         self.config_paths = get_config_paths(experiment_params)
 
-        # Run all of those simulations.
-        self.run_sims(self.config_paths)
-
+        # Run all of those simulations, unless the caller only wants the
+        # configs generated (e.g. to dispatch each one independently
+        # elsewhere) without also running them here sequentially.
+        if not generate_configs_only:
+                self.run_sims(self.config_paths)
         return None
 
     def create_configs_for_experiment(self, experiment_params: dict) -> None:
@@ -107,12 +109,11 @@ class Experiment:
         experiment_dir = get_experiment_dir(experiment_params)
 
         # Make the experiments_dir if it doesn't exist. May want to delete contents here?
-        if not experiment_dir.is_dir():
-            experiment_dir.mkdir()
-            print("Created directory: {} ".format(experiment_dir))
+        if experiment_dir.exists() and not experiment_dir.is_dir():
+            raise ValueError("Not a directory: {} ".format(experiment_dir))
+        experiment_dir.mkdir(parents=True, exist_ok=True)
+        print("Created directory: {} ".format(experiment_dir))
 
-        else:
-            raise ValueError("Directory already exists: {} ".format(experiment_dir))
 
         # Grab data from experiment_params dict.
         isotope = experiment_params["isotope"]

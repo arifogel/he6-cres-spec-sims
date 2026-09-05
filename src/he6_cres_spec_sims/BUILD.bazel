@@ -1,0 +1,29 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+load("//tools:deps.bzl", "cdeps", "python_ide_backport")
+load("@pypi//:requirements.bzl", "requirement")
+load("@aspect_rules_py//py:defs.bzl", "py_binary", "py_library")
+
+py_library(
+    name = "he6_cres_spec_sims",
+    srcs = glob(["**/*.py"]),
+    data = [
+        ":spec_tools/distributions/Data/He6.json",
+        ":spec_tools/distributions/Data/Ne19.json",
+        ":spec_tools/trap_field_profile_pkl/2021_trap_profile_mainfield_0T_trap_1A.csv",
+    ],
+    imports = [".."],
+    visibility = ["//visibility:public"],
+    deps = cdeps([
+        requirement("argparse"),
+        requirement("awkward-pandas"),
+        requirement("natsort"),
+        requirement("pandas"),
+        requirement("psycopg2-binary"),
+        requirement("pytz"),
+        requirement("pyyaml"),
+        requirement("scikit-learn"),
+        requirement("uproot"),
+    ]),
+)
+
+python_ide_backport()

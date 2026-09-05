@@ -1,0 +1,8 @@
+load("@aspect_rules_py//py:defs.bzl", "py_binary")
+
+py_binary(
+    name = "slice_block_sweep",
+    srcs = ["slice_block_sweep.py"],
+    main = "slice_block_sweep.py",
+    deps = ["//src/he6_cres_spec_sims"],
+)
