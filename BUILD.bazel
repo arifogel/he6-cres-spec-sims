@@ -7,4 +7,3 @@ sh_binary(
     data = ["@uv_bin//:uv"],
     visibility = ["//visibility:private"],
 )
-

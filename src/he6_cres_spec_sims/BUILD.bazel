@@ -1,7 +1,6 @@
-load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
-load("//tools:deps.bzl", "cdeps", "python_ide_backport")
+load("@aspect_rules_py//py:defs.bzl", "py_library")
 load("@pypi//:requirements.bzl", "requirement")
-load("@aspect_rules_py//py:defs.bzl", "py_binary", "py_library")
+load("//tools:deps.bzl", "cdeps", "python_ide_backport")
 
 py_library(
     name = "he6_cres_spec_sims",
