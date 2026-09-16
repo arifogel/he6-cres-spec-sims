@@ -32,6 +32,15 @@ class EventBuilder:
 
         print( f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
 
+        # Collected as a plain list and concatenated once at the end, rather than
+        # concatenating trapped_event_df with each new single-row event inside the loop:
+        # pd.concat() copies its entire first argument, so calling it once per trapped
+        # event made the total cost of this loop O(N^2) in the number of trapped events,
+        # not O(N). A single pd.concat() over the whole list at the end produces the
+        # same DataFrame (same row order, since ignore_index=True re-indexes
+        # sequentially either way) in O(N).
+        trapped_event_dfs = []
+
         while (event_num < events_to_simulate) and (beta_num < betas_to_simulate):
             # generate trapped beta
             is_trapped = False
@@ -49,16 +58,18 @@ class EventBuilder:
 
                 is_trapped = self.trap_condition(single_event_df)
 
-            if event_num == 0:
-                trapped_event_df = single_event_df
-
-            elif beta_num == betas_to_simulate:
+            # Preserves the original's exact edge-case behavior: if the beta budget is
+            # exhausted on the same beta that turns out to be trapped, that event is
+            # dropped -- except for the very first trapped event (event_num == 0), which
+            # is always kept even if it also exhausts the budget. Not something this
+            # change is meant to alter, just faithfully carried over.
+            if event_num != 0 and beta_num == betas_to_simulate:
                 break
 
-            else:
-                trapped_event_df = pd.concat([trapped_event_df, single_event_df], ignore_index=True)
-
+            trapped_event_dfs.append(single_event_df)
             event_num += 1
+
+        trapped_event_df = pd.concat(trapped_event_dfs, ignore_index=True)
         return trapped_event_df
 
     def construct_untrapped_track_df( self, beta_position, beta_direction, beta_energy, event_num, beta_num):
