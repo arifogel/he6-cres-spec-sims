@@ -18,6 +18,8 @@ Classes contained in module:
 
 """
 
+import time
+
 import pandas as pd
 from numpy import hstack
 
@@ -46,17 +48,49 @@ class Simulation:
         if self.config.settings.sim_daq:
             daq = sim_blocks.DAQ.DAQ(self.config)
 
-        tracks_df = eventbuilder.run()
-        tracks_df, bands = trackbuilder.run(tracks_df)
-        bands = sidebandbuilder.run(tracks_df, bands)
-        downmixed_tracks_df = dmtrackbuilder.run(tracks_df, bands)
-        if self.config.settings.sim_daq:
-            spec_array = daq.run(bands)
+        # Stage-level timing only -- no computed value or control flow is touched here.
+        # Printed as its own clearly-labeled block so it can be grepped straight out of
+        # a job's existing log file (see local_spec_sims.py's per-job log_path).
+        stage_times = {}
 
+        t0 = time.perf_counter()
+        tracks_df = eventbuilder.run()
+        stage_times["EventBuilder"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        tracks_df, bands = trackbuilder.run(tracks_df)
+        stage_times["TrackBuilder"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        bands = sidebandbuilder.run(tracks_df, bands)
+        stage_times["SideBandBuilder"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        downmixed_tracks_df = dmtrackbuilder.run(tracks_df, bands)
+        stage_times["DMTrackBuilder"] = time.perf_counter() - t0
+
+        if self.config.settings.sim_daq:
+            t0 = time.perf_counter()
+            spec_array = daq.run(bands)
+            stage_times["DAQ"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
         # Save the results of the simulation:
         # For now only write downmixed_tracks to keep things lightweight.
         results = Results(downmixed_tracks_df, bands)
         results.save(self.config_path)
+        stage_times["Results.save"] = time.perf_counter() - t0
+
+        total_time = sum(stage_times.values())
+        print("\n===== STAGE TIMING BREAKDOWN =====")
+        print(f"betas_to_simulate={self.config.physics.betas_to_simulate}, "
+              f"events_to_simulate={self.config.physics.events_to_simulate}, "
+              f"trapped events (len(tracks_df))={len(tracks_df)}")
+        for stage_name, stage_seconds in stage_times.items():
+            pct = 100 * stage_seconds / total_time if total_time > 0 else 0
+            print(f"  {stage_name:20s} {stage_seconds:9.3f}s  ({pct:5.1f}%)")
+        print(f"  {'TOTAL (timed stages)':20s} {total_time:9.3f}s")
+        print("===================================\n")
 
         return None
 
