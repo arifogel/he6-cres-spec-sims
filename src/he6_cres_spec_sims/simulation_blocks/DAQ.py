@@ -63,7 +63,11 @@ class DAQ:
             logger.error(str(e))
             raise RuntimeError("Noise loading failed") from e
 
-        self.noise_tau = np.nan_to_num(1./np.log(1 + 1./self.noise_mean), 0)
+        zero_noise_bins = int(np.sum(self.noise_mean == 0))
+        if zero_noise_bins:
+            logger.warning("%d of %d noise_mean bins are exactly zero", zero_noise_bins, self.noise_mean.size)
+        with np.errstate(divide="ignore"):
+            self.noise_tau = np.nan_to_num(1./np.log(1 + 1./self.noise_mean), 0)
 
         #amplitude gain g_overall(f) experienced by both signal and noise. Class object is interpolation function g(f)
         #If frequency outside of bandwidth, automatically returns g(f) = 0 (aka, alias prevention)
@@ -322,7 +326,8 @@ class DAQ:
         noise_array += self.config.dist_interface.rng.normal(size=array_size)
 
         # Want to scale so that mean power agrees with config (based on Chi-Squared k=2 for unsummed bins)
-        tau_noise = 1./np.log(1 + 1./ self.noise_mean)
+        with np.errstate(divide="ignore"):
+            tau_noise = 1./np.log(1 + 1./ self.noise_mean)
         noise_array *= np.sqrt(tau_noise /  2.)
 
         return noise_array
@@ -464,7 +469,11 @@ class DAQ:
 
         # use tau from Non-Exponential noise doc: https://drive.google.com/file/d/10EGOZGXkmiXHXLeyHQ1qnNcc_HK8FPxj/view
         #thresholds = means
-        thresholds = 1. / np.log(1. + 1./means)
+        zero_mean_bins = int(np.sum(means == 0))
+        if zero_mean_bins:
+            logger.warning("%d of %d threshold-averaging bins are exactly zero", zero_mean_bins, means.size)
+        with np.errstate(divide="ignore"):
+            thresholds = 1. / np.log(1. + 1./means)
         thresholds *= self.config.daq.threshold_factor
         thresholds = np.clip(thresholds, 1,None)
         return thresholds
