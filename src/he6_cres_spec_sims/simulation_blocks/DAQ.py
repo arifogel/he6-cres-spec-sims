@@ -61,6 +61,7 @@ class DAQ:
         except Exception as e:
             logger.error("Noise loading failed!")
             logger.error(str(e))
+            raise RuntimeError("Noise loading failed") from e
 
         self.noise_tau = np.nan_to_num(1./np.log(1 + 1./self.noise_mean), 0)
 

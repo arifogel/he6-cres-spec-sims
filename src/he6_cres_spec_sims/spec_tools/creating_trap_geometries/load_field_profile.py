@@ -30,9 +30,9 @@ def load_field_profile(filename):
             config_dict = json.load(read_file)
             field_coils = config_dict["field_coils"]
             main_field = config_dict["main_field"]
-        except:
+        except Exception as e:
             logger.error('Loaded file "{}" does not contain a valid field profile config dictionary'.format(filename))
-            return
+            raise ValueError('Loaded file "{}" does not contain a valid field profile config dictionary'.format(filename)) from e
             
     logger.info("Field profile {} loaded".format(filename))
 

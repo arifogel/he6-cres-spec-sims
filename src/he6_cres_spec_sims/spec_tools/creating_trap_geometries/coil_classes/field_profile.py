@@ -108,7 +108,8 @@ class Field_profile:
             return (Bx, By, Bz)
 
         else:
-            logger.error("ERROR: {} not a valid coordinate system".format(return_coordinates))
+            logger.error("ERROR: {} not a valid coordinate system".format(field_coordinates))
+            raise ValueError("{} not a valid coordinate system".format(field_coordinates))
 
     def field_grad(
         self, position, deriv_order=1, dx=1e-6, grad_coordinates="Cartesian"

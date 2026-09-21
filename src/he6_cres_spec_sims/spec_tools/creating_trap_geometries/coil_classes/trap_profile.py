@@ -71,7 +71,7 @@ class Trap_profile(Field_profile):
         
         if not value > 0:
             logger.error("ERROR: New main field must be greater than 0")
-            return
+            raise ValueError("New main field must be greater than 0 (got {})".format(value))
         
         else:
             if self._field_scales == True:

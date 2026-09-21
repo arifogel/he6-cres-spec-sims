@@ -31,7 +31,22 @@ class Coil_form:
         while self._inner_radius >= self._outer_radius:
         
             logger.error("ERROR: inner radius greater than outer radius")
-            self._inner_radius = input("Reset inner radius: ")
+            try:
+                response = input("Reset inner radius: ")
+            except EOFError:
+                response = ""
+            if not response:
+                # No interactive stdin available to recover from (closed
+                # or empty -- the expected case for any batch/automated
+                # run, e.g. stage1_task, which has no attached terminal):
+                # input() itself raises EOFError once stdin is exhausted,
+                # so this is reached either via that or via a blank
+                # response, and either way there's nothing left to try.
+                raise ValueError(
+                    "inner radius ({}) greater than outer radius ({}), and no "
+                    "interactive stdin available to reset it".format(self._inner_radius, self._outer_radius)
+                )
+            self._inner_radius = float(response)
         
     def get_coil_dimensions(self):
         """
@@ -179,6 +194,7 @@ class Coil_form:
             
         else:
             logger.error("ERROR: {} not a valid coordinate system".format(return_coordinates))
+            raise ValueError("{} not a valid coordinate system".format(return_coordinates))
             
     def field_strength(self,radius,zpos):
         """
