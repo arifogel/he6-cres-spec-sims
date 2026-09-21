@@ -16,6 +16,8 @@ Frequency: Hz
 Power    : W
 ---
 """
+import logging
+
 import numpy as np
 
 import scipy.integrate as integrate
@@ -24,6 +26,8 @@ from scipy.optimize import root_scalar
 from scipy.special import jv
 
 from he6_cres_spec_sims.constants import *
+
+logger = logging.getLogger(__name__)
 
 
 def central_diff(f, x, dx=1e-6):
@@ -90,7 +94,7 @@ def freq_to_energy(frequency, field):
         warning = "Warning: {} higher than maximum cyclotron frequency {}".format(
             frequency, max_freq
         )
-        print(warning)
+        logger.warning(warning)
     return gamma * ME - ME
 
 
@@ -130,8 +134,7 @@ def theta_center(zpos, rho, pitch_angle, trap_profile):
         return theta_center_calc
 
     else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
 
 def cyc_radius(energy, field, pitch_angle):
@@ -164,15 +167,14 @@ def max_radius(energy, center_pitch_angle, rho, trap_profile):
         if np.all(center_radius >= end_radius):
             return center_radius
         else:
-            print(
-                "Warning: max_radius is occuring at end of trap (theta=90). \
-                Something odd may be going on."
+            logger.warning(
+                "Warning: max_radius is occuring at end of trap (theta=90). "
+                "Something odd may be going on."
             )
             return False
 
     else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
 
 def min_radius(energy, center_pitch_angle, rho, trap_profile):
@@ -193,15 +195,14 @@ def min_radius(energy, center_pitch_angle, rho, trap_profile):
         if np.all(center_radius >= end_radius):
             return end_radius
         else:
-            print(
-                "Warning: min_radius is occuring at center of trap, something \
-                odd may be going on."
+            logger.warning(
+                "Warning: min_radius is occuring at center of trap, something "
+                "odd may be going on."
             )
             return False
 
     else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
 
 def min_theta(rho, zpos, trap_profile):
@@ -218,8 +219,7 @@ def min_theta(rho, zpos, trap_profile):
         return theta
 
     else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
 
 @np.vectorize
@@ -233,7 +233,7 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
     if trap_profile.is_trap:
 
         if center_pitch_angle < min_theta(rho, 0, trap_profile):
-            print("WARNING: Electron not trapped (zpos)")
+            logger.warning("WARNING: Electron not trapped (zpos)")
             return False
 
         else:
@@ -254,20 +254,19 @@ def max_zpos(energy, center_pitch_angle, rho, trap_profile, debug=False):
             curr_field = trap_profile.field_strength(rho_p, max_z)
 
             if debug and (curr_field > max_reached_field):
-                print( "Final field greater than max allowed field by: ", curr_field - max_reached_field)
-                print("Bmax reached: ", curr_field)
+                logger.debug("Final field greater than max allowed field by: %s", curr_field - max_reached_field)
+                logger.debug("Bmax reached: %s", curr_field)
 
             if debug == True:
-                print("zlength: ", max_z)
+                logger.debug("zlength: %s", max_z)
 
             if max_z > trap_profile.trap_width[1]:
-                print("Error Rate: ", max_z - trap_profile.trap_width[1])
+                logger.warning("Error Rate: %s", max_z - trap_profile.trap_width[1])
 
             return max_z
 
     else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
 def mod_index(avg_cycl_freq, zmax):
 
@@ -309,7 +308,7 @@ def curr_pitch_angle(rho, zpos, center_pitch_angle, trap_profile):
         max_reached_field = trap_profile.field_strength(rho, max_z)
 
         if np.any(abs(zpos) > max_z):
-            print("Electron does not reach given zpos")
+            logger.warning("Electron does not reach given zpos")
             curr_pitch = "FAIL"
         else:
             curr_field = trap_profile.field_strength(rho, zpos)
@@ -318,8 +317,7 @@ def curr_pitch_angle(rho, zpos, center_pitch_angle, trap_profile):
         return curr_pitch
 
     else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
 def semiopen_simpson(v):
     """Semi-Open Composite Simpson's Rule for fast/ vectorized integral evaluation
@@ -371,8 +369,7 @@ def axial_freq(energy, center_pitch_angle, rho, trap_profile, nIntegralPoints=20
         return axial_frequency
 
     else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
 def avg_cycl_freq(energy, center_pitch_angle, rho, trap_profile):
     field = b_avg(energy, center_pitch_angle, rho, trap_profile)
@@ -432,8 +429,7 @@ def b_avg(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegral
         return b_avg
 
     else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
 
 def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIntegralPoints=200):
@@ -489,8 +485,7 @@ def grad_b_freq(energy, center_pitch_angle, rho, trap_profile, ax_freq=None, nIn
         return grad_B_frequency
 
     else:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
 
 
@@ -550,8 +545,7 @@ def anharmonic_axial_trajectory(energy, center_pitch_angle, rho, axial_freq, zma
     found by integrating the relevant ODE. Returns [z(t), vz(t)].
     """
     if not trap_profile.is_trap:
-        print("ERROR: Given trap profile is not a valid trap")
-        return False
+        raise ValueError("Given trap profile is not a valid trap")
 
     T = 1./ axial_freq
     dt = T/ nHarmonics
@@ -581,8 +575,7 @@ def instantaneous_frequency(energy, rho, avg_cycl_freq, vz, z=None, trap_profile
 
     if magnetic_modulation:
         if not trap_profile.is_trap:
-            print("ERROR: Given trap profile is not a valid trap")
-            return False
+            raise ValueError("Given trap profile is not a valid trap")
         Bz = lambda z: trap_profile.field_strength(rho, z)
         return Q * Bz(z) / (M * gamma(energy)) * ( 1. + vz / phase_vel)
     else:

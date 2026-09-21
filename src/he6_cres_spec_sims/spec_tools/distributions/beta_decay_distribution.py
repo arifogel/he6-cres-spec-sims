@@ -1,4 +1,5 @@
 import json
+import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -6,6 +7,8 @@ from scipy.integrate import quad
 from scipy.interpolate import interp1d
 
 from .base_distribution import BaseDistribution
+
+logger = logging.getLogger(__name__)
 
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 from he6_cres_spec_sims.constants import *
@@ -93,7 +96,7 @@ class BetaDecayDistribution(BaseDistribution):
         return np.clip(self.dNdE_unnormed_SM(W) * (1 + (self.b / W)), 0, np.inf)
 
     def fraction_of_spectrum(self):
-        print(self.W_min, self.W_max)
+        logger.debug("W_min=%s W_max=%s", self.W_min, self.W_max)
         spectrum_BW, norm_err = quad( self.dNdE, self.W_min, self.W_max,)
         spectrum_total, norm_err = quad( self.dNdE, 1, self.allowed_isotopes[self.isotope]["W_max"])
         return spectrum_BW / spectrum_total

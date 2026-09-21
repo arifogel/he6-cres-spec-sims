@@ -1,4 +1,5 @@
 import csv
+import logging
 import math
 import os
 import pathlib
@@ -7,6 +8,8 @@ import time
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
 from scipy.optimize import fmin
+
+logger = logging.getLogger(__name__)
 
 class TrapFieldProfile:
     def __init__(self, main_field, trap_current):
@@ -46,7 +49,7 @@ class TrapFieldProfile:
                 map_array = np.loadtxt(pkl_file)
 
         except IOError as e:
-            print("Do you have a field map here: {} ".format(pkl_path))
+            logger.error("Do you have a field map here: {} ".format(pkl_path))
             raise e
 
         # Adjust the field values so they align with the given trap configuration.
@@ -67,8 +70,8 @@ class TrapFieldProfile:
         func = lambda z: -1 * field_func(0, z)
 
         maximum = fmin(func, 0, xtol=1e-12)[0]
-        print("Trap width: ({},{})".format(-maximum, maximum))
-        print("Maximum Field: {}".format(-1 * func(maximum)))
+        logger.info("Trap width: ({},{})".format(-maximum, maximum))
+        logger.info("Maximum Field: {}".format(-1 * func(maximum)))
 
         trap_width = (-maximum, maximum)
         return trap_width

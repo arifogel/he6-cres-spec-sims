@@ -1,9 +1,12 @@
+import logging
 import math
 import numpy as np
 from scipy.misc import derivative
 from scipy.optimize import fmin
 
 from he6_cres_spec_sims.spec_tools.creating_trap_geometries.coil_classes.field_profile import Field_profile
+
+logger = logging.getLogger(__name__)
 
 class Trap_profile(Field_profile):
     """
@@ -29,15 +32,13 @@ class Trap_profile(Field_profile):
         self._field_scales = field_scales
         
         if not main_field > 0:
-            print("WARNING: Main field not greater than 0")
-            print("Not a valid trap...")
+            logger.warning("WARNING: Main field not greater than 0. Not a valid trap...")
             self._is_trap = False
             return None
             
         elif not (self.field_derivative(0,0) == 0
                 and self.field_derivative(0,0,2) > 0):
-            print("WARNING: Given field profile does not have a local minimum at z=0")
-            print("Not a valid trap...")
+            logger.warning("WARNING: Given field profile does not have a local minimum at z=0. Not a valid trap...")
             self._is_trap = False
             return None
             
@@ -54,8 +55,8 @@ class Trap_profile(Field_profile):
             return -1 * field_func(0,z)
         
         maximum = fmin(func,0,xtol=1e-12)[0]
-        print("Trap width: ({},{})".format(-maximum,maximum))
-        print("Maximum Field: {}".format(-1 * func(maximum)))
+        logger.info("Trap width: ({},{})".format(-maximum,maximum))
+        logger.info("Maximum Field: {}".format(-1 * func(maximum)))
     
         trap_width = (-maximum,maximum)
         return trap_width
@@ -69,7 +70,7 @@ class Trap_profile(Field_profile):
     def main_field(self,value):
         
         if not value > 0:
-            print("ERROR: New main field must be greater than 0")
+            logger.error("ERROR: New main field must be greater than 0")
             return
         
         else:

@@ -19,6 +19,7 @@ Classes contained in module:
 """
 
 import time
+import logging
 
 import pandas as pd
 from numpy import hstack
@@ -30,6 +31,8 @@ import he6_cres_spec_sims.simulation_blocks.trackBuilder
 import he6_cres_spec_sims.simulation_blocks.sideBandBuilder
 import he6_cres_spec_sims.simulation_blocks.dmTrackBuilder
 import he6_cres_spec_sims.simulation_blocks.DAQ
+
+logger = logging.getLogger(__name__)
 
 class Simulation:
     """ Chains together simulation blocks to run full simulation, outputs .csv of Results (defined below)
@@ -82,15 +85,15 @@ class Simulation:
         stage_times["Results.save"] = time.perf_counter() - t0
 
         total_time = sum(stage_times.values())
-        print("\n===== STAGE TIMING BREAKDOWN =====")
-        print(f"betas_to_simulate={self.config.physics.betas_to_simulate}, "
+        logger.info("\n===== STAGE TIMING BREAKDOWN =====")
+        logger.info(f"betas_to_simulate={self.config.physics.betas_to_simulate}, "
               f"events_to_simulate={self.config.physics.events_to_simulate}, "
               f"trapped events (len(tracks_df))={len(tracks_df)}")
         for stage_name, stage_seconds in stage_times.items():
             pct = 100 * stage_seconds / total_time if total_time > 0 else 0
-            print(f"  {stage_name:20s} {stage_seconds:9.3f}s  ({pct:5.1f}%)")
-        print(f"  {'TOTAL (timed stages)':20s} {total_time:9.3f}s")
-        print("===================================\n")
+            logger.info(f"  {stage_name:20s} {stage_seconds:9.3f}s  ({pct:5.1f}%)")
+        logger.info(f"  {'TOTAL (timed stages)':20s} {total_time:9.3f}s")
+        logger.info("===================================\n")
 
         return None
 
@@ -100,7 +103,7 @@ class Simulation:
         try:
             results = Results.load(self.config_path)
         except Exception as e:
-            print("You don't have results to run the daq on.")
+            logger.error("You don't have results to run the daq on.")
             raise e
 
         # Initialize all necessary simulation blocks.
@@ -141,14 +144,14 @@ class Results:
         # If results_dir doesn't exist, then create it.
         if not results_dir.is_dir():
             results_dir.mkdir()
-            print("created directory : ", results_dir)
+            logger.info("created directory : %s", results_dir)
 
         # Now write the results to results_dir:
         for data_name, data in results_dict.items():
             try:
                 data.to_csv(results_dir / "{}.csv".format(data_name))
             except Exception as e:
-                print("Unable to write {} data.".format(data_name))
+                logger.error("Unable to write {} data.".format(data_name))
                 raise e
 
     def load(self, config_path):
@@ -160,7 +163,7 @@ class Results:
                 df = pd.read_csv( results_dir / "{}.csv".format(data_name), index_col=[0])
                 results_dict[data_name] = df
             except Exception as e:
-                print("Unable to load {} data.".format(data_name))
+                logger.error("Unable to load {} data.".format(data_name))
                 raise e
 
         results = results_dict["dmtracks"]

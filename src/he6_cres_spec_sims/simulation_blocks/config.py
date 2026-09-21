@@ -1,8 +1,11 @@
+import logging
 from pathlib import Path
 import yaml
 
 from he6_cres_spec_sims.spec_tools.trap_field_profile import TrapFieldProfile
 from he6_cres_spec_sims.spec_tools.distributions.distribution_interface import DistributionInterface
+
+logger = logging.getLogger(__name__)
 
 class DotDict(dict):
     """Provides dot.notation access to dictionary attributes."""
@@ -100,11 +103,11 @@ class Config:
                     self.downmixer = DotDict(config_dict["DMTrackBuilder"])
                     self.daq = DotDict(config_dict["DAQ"])
 
-                print("Seed: "+str(self.settings.rand_seed))
+                logger.info("Seed: "+str(self.settings.rand_seed))
                 self.dist_interface = DistributionInterface(self.settings.rand_seed)
 
         except Exception as e:
-            print("Config file failed to load.")
+            logger.error("Config file failed to load.")
             raise e
 
     def load_field_profile(self):
@@ -121,5 +124,5 @@ class Config:
             self.field_strength = self.trap_profile.field_strength
 
         except Exception as e:
-            print("Field profile failed to load.")
+            logger.error("Field profile failed to load.")
             raise e

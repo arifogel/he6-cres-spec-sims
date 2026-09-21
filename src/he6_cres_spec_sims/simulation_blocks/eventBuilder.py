@@ -1,8 +1,12 @@
+import logging
+
 import numpy as np
 import pandas as pd
 
 from .physics import *
 from he6_cres_spec_sims.constants import *
+
+logger = logging.getLogger(__name__)
 
 class EventBuilder:
     """  Constructs a list of betas which are trapped within the detector volume
@@ -15,8 +19,8 @@ class EventBuilder:
 
     def run(self):
 
-        print("~~~~~~~~~~~~EventBuilder Block~~~~~~~~~~~~~~\n")
-        print("Constructing a set of trapped events:")
+        logger.info("~~~~~~~~~~~~EventBuilder Block~~~~~~~~~~~~~~\n")
+        logger.info("Constructing a set of trapped events:")
         # event_num denotes the number of trapped electrons simulated.
         event_num = 0
         # beta_num denotes the total number of betas produced in the trap.
@@ -30,7 +34,7 @@ class EventBuilder:
         if betas_to_simulate == -1:
             betas_to_simulate = np.inf
 
-        print( f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
+        logger.info( f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
 
         # Collected as a plain list and concatenated once at the end, rather than
         # concatenating trapped_event_df with each new single-row event inside the loop:
@@ -47,8 +51,8 @@ class EventBuilder:
 
             while not is_trapped and beta_num < betas_to_simulate:
                 if beta_num % 2500 == 0:
-                    print( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
-                    print( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
+                    logger.info( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
+                    logger.info( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
 
                 initial_position, initial_direction  = self.physics.generate_beta_position_direction()
                 energy = self.physics.generate_beta_energy()

@@ -1,3 +1,5 @@
+import logging
+
 from scipy import interpolate
 import pandas as pd
 import numpy as np
@@ -9,6 +11,8 @@ from shutil import rmtree
 import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
 from he6_cres_spec_sims.spec_tools.spec_calc.spec_calc import waveguide_beta
 from he6_cres_spec_sims.constants import *
+
+logger = logging.getLogger(__name__)
 
 class DAQ:
     """  If called, this module  passes through list of downmixed bands through the DAQ, producing fake .spec(k) files
@@ -55,8 +59,8 @@ class DAQ:
                 #Should we do more than 10k slices read in? Perhaps...
                 self.noise_mean[self.bins[n]] = self.spec_to_array(self.config.daq.noise_paths[n]).mean(axis=0)
         except Exception as e:
-            print("Noise loading failed!")
-            print(str(e))
+            logger.error("Noise loading failed!")
+            logger.error(str(e))
 
         self.noise_tau = np.nan_to_num(1./np.log(1 + 1./self.noise_mean), 0)
 
@@ -152,7 +156,7 @@ class DAQ:
         chunks_processed = 0
 
         for acq in range(self.n_acquisitions):
-            print( f"Building spec acquistion {acq}. {self.config.daq.acq_length} s, {self.slices_in_spec} slices.")
+            logger.info( f"Building spec acquistion {acq}. {self.config.daq.acq_length} s, {self.slices_in_spec} slices.")
             build_file_start = process_time()
             # Iterate by the slice_block until you hit the end of the spec file.
             for start_slice in np.arange(0, self.slices_in_roach, self.slice_block):
@@ -194,19 +198,19 @@ class DAQ:
                         break
 
             build_file_stop = process_time()
-            print( f"Time to build acq {acq}: {build_file_stop- build_file_start:.3f} s \n")
+            logger.info( f"Time to build acq {acq}: {build_file_stop- build_file_start:.3f} s \n")
 
             if max_chunks is not None and chunks_processed >= max_chunks:
                 break
 
-        print("Done building {} files. ".format(self.config.daq.spec_suffix))
+        logger.info("Done building {} files. ".format(self.config.daq.spec_suffix))
 
     def get_signal_time_series(self, acq, start_slice, stop_slice):
         """
         Build a time-domain array of signal (Dimensions = N_FFT Bins x num_slices)
         Later, this will be converted to the frequency domain S(f) via FFT, with the same dimensions
         """
-        print(f"acq = {acq}, slices = [{start_slice}:{stop_slice}]")
+        logger.debug(f"acq = {acq}, slices = [{start_slice}:{stop_slice}]")
         slice_start_time = start_slice * self.delta_t
         slice_stop_time = stop_slice * self.delta_t
         num_slices = stop_slice - start_slice
@@ -328,7 +332,7 @@ class DAQ:
         num_slices = signal_array.shape[0]
         #need to do sum over slices that is divisible by roach_avg
         if num_slices %  self.config.daq.roach_avg:
-            print("Num slices really should be divisible by roach_avg! Why is it not!? Trimming")
+            logger.warning("Num slices really should be divisible by roach_avg! Why is it not!? Trimming")
             num_slices_divisible = num_slices - (num_slices % self.config.daq.roach_avg)
             signal_array = signal_array[:num_slices_divisible,:] # Trim remainder rows
 
@@ -356,7 +360,7 @@ class DAQ:
 
     def safe_mkdir(self, new_dir):
         new_dir.mkdir(parents=True, exist_ok=True)
-        print("created directory : ", new_dir)
+        logger.info("created directory : %s", new_dir)
 
     def create_results_dir(self):
         # First make a results_dir with the same name as the config.

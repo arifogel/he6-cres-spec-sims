@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import os.path
 
@@ -7,6 +8,8 @@ from he6_cres_spec_sims.spec_tools.creating_trap_geometries.coil_classes.field_p
 
 from scipy.misc import derivative
 from scipy.optimize import fminbound
+
+logger = logging.getLogger(__name__)
 
 
 def load_field_profile(filename):
@@ -28,10 +31,10 @@ def load_field_profile(filename):
             field_coils = config_dict["field_coils"]
             main_field = config_dict["main_field"]
         except:
-            print('Loaded file "{}" does not contain a valid field profile config dictionary'.format(filename))
+            logger.error('Loaded file "{}" does not contain a valid field profile config dictionary'.format(filename))
             return
             
-    print("Field profile {} loaded".format(filename))
+    logger.info("Field profile {} loaded".format(filename))
 
     list_coils= []
     for coil_dict in field_coils:

@@ -1,6 +1,10 @@
+import logging
+
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 import pandas as pd
 from he6_cres_spec_sims.simulation_blocks.trackBuilder import *
+
+logger = logging.getLogger(__name__)
 
 class SideBandBuilder:
     """ Constructs list of sidebands and powers from main bands made in trackbuilder
@@ -12,7 +16,7 @@ class SideBandBuilder:
 
     def run(self, tracks_df, bands):
 
-        print("~~~~~~~~~~~~SideBandBuilder Block~~~~~~~~~~~~~~\n")
+        logger.info("~~~~~~~~~~~~SideBandBuilder Block~~~~~~~~~~~~~~\n")
         sideband_num = self.config.sidebandbuilder.sideband_num
         magnetic_modulation = self.config.sidebandbuilder.magnetic_modulation
         harmonic_sidebands = self.config.sidebandbuilder.harmonic_sidebands

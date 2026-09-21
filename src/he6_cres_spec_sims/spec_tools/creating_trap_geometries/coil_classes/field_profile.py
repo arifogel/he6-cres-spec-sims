@@ -1,4 +1,5 @@
 import csv
+import logging
 import math
 import os
 import pathlib
@@ -7,6 +8,8 @@ import time
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator, RectBivariateSpline
 from scipy.misc import derivative
+
+logger = logging.getLogger(__name__)
 
 class Field_profile:
     """
@@ -40,10 +43,7 @@ class Field_profile:
                 if not curr_name in self._coil_names:
                     self._coil_names.append(curr_name)
                 else:
-                    print()
-                    print('WARNING: Coil name "{}" already in use'.format(curr_name))
-                    print('Using default name "Coil {}"...'.format(self._num_coils))
-                    print()
+                    logger.warning('\nWARNING: Coil name "{}" already in use\nUsing default name "Coil {}"...\n'.format(curr_name, self._num_coils))
                     coil.name = "Coil {}".format(self._num_coils)
                     self._coil_names.append(curr_name)
 
@@ -58,7 +58,7 @@ class Field_profile:
                 coil_found = True
                 return coil
         if coil_found == False:
-            print("Coil '{}' does not exist".format(str(name)))
+            logger.warning("Coil '{}' does not exist".format(str(name)))
             return None
 
     def get_coil_list(self):
@@ -108,7 +108,7 @@ class Field_profile:
             return (Bx, By, Bz)
 
         else:
-            print("ERROR: {} not a valid coordinate system".format(return_coordinates))
+            logger.error("ERROR: {} not a valid coordinate system".format(return_coordinates))
 
     def field_grad(
         self, position, deriv_order=1, dx=1e-6, grad_coordinates="Cartesian"
@@ -191,7 +191,7 @@ class Field_profile:
         z_array = np.arange(-trap_zmax, trap_zmax, grid_edge_length)
 
         dir_path = pathlib.Path(__file__).parent.resolve()
-        print(dir_path)
+        logger.debug("dir_path=%s", dir_path)
         pkl_path = (
             dir_path
             / "field_profile_pkl_files/main_field_{}_trap_current_{}.csv".format(
@@ -204,7 +204,7 @@ class Field_profile:
                 map_array = np.loadtxt(pkl_file)
 
         except IOError:
-            print("Didn't find an existing field map.")
+            logger.info("Didn't find an existing field map.")
             start = time.process_time()
             map_array = np.zeros((z_array.shape[0], rho_array.shape[0]))
 
@@ -216,8 +216,8 @@ class Field_profile:
 
             np.savetxt(pkl_path, map_array)
             tot_time = time.process_time() - start
-            print("Time to create map_array for new field settings:", tot_time, "\n")
-            print("Writing the map_array to csv. \npkl_path: ", pkl_path)
+            logger.info("Time to create map_array for new field settings: %s \n", tot_time)
+            logger.info("Writing the map_array to csv. \npkl_path: %s", pkl_path)
 
         # Now use the map_array to do the interpolation.
         map_array = np.transpose(map_array)
