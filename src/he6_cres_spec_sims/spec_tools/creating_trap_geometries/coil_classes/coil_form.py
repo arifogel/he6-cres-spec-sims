@@ -193,8 +193,8 @@ class Coil_form:
             return (Bx,By,Bz)
             
         else:
-            logger.error("ERROR: {} not a valid coordinate system".format(return_coordinates))
-            raise ValueError("{} not a valid coordinate system".format(return_coordinates))
+            logger.error("ERROR: {} not a valid coordinate system".format(field_coordinates))
+            raise ValueError("{} not a valid coordinate system".format(field_coordinates))
             
     def field_strength(self,radius,zpos):
         """
