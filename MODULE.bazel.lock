@@ -220,7 +220,7 @@
     "//tools/uv:uv_extension.bzl%uv_ext": {
       "general": {
         "bzlTransitiveDigest": "s+Mm9i2qZZ93a0q2sgRYA4lWV9A6gQotn37ISx3jOLw=",
-        "usagesDigest": "mtsMC8kscEZv0nMiwu4975UbIslNLxY48/8lCZIBndM=",
+        "usagesDigest": "hwrxzAmlGm+uQjzYfRegMdGLI7X2ruN9o4XgR/t+p40=",
         "recordedInputs": [],
         "generatedRepoSpecs": {
           "uv_bin": {
