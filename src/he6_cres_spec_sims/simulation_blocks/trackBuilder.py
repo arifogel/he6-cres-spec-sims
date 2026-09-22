@@ -38,7 +38,6 @@ class TrackBuilder:
         """
         Builds scattered tracks for each event.
         """
-        logger.info("~~~~~~~~~~~~TrackBuilder Block~~~~~~~~~~~~~~")
         # Empty list to be filled with tracks.
         bands = []
         tracks_list = []

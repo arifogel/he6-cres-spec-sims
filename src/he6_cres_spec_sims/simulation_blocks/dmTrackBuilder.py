@@ -11,7 +11,6 @@ class DMTrackBuilder:
         self.config = config
 
     def run(self, tracks_df, bands):
-        logger.info("~~~~~~~~~~~~DMTrackBuilder Block~~~~~~~~~~~~~~")
         mixer_freq = self.config.downmixer.mixer_freq
         logger.info("Downmixing the cyclotron frequency with a {} GHz signal".format( np.around(mixer_freq * 1e-9, 4)))
         downmixed_tracks_df = tracks_df.copy()

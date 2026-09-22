@@ -19,7 +19,6 @@ class EventBuilder:
 
     def run(self):
 
-        logger.info("~~~~~~~~~~~~EventBuilder Block~~~~~~~~~~~~~~")
         logger.info("Constructing a set of trapped events:")
         # event_num denotes the number of trapped electrons simulated.
         event_num = 0
