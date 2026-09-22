@@ -78,6 +78,7 @@ repos:
       - id: prettier
         files: \.(yaml|yml)$
         exclude: ^config_files/
+        args: ["--ignore-path=/dev/null"]
   - repo: https://github.com/djlint/djLint
     rev: d69c3510ebf3e850e0fa00cb998f83bfc6f87c88 # frozen: v1.42.1
     hooks:
