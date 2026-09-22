@@ -34,15 +34,13 @@ def main():
 
 def run_simulation(sim_config_path):
 
-    logger.info(f"START. Current (PST) time: {get_pst_time()}")
-    logger.info(f"\n\n\n Beginning simulation. Path: {sim_config_path} \n\n\n")
+    logger.info("START %s. Beginning simulation. Path: %s", get_pst_time(), sim_config_path)
 
     simulation = sim.Simulation(Path(sim_config_path))
     simulation.run_full()
 
-    logger.info(f"\n\n\n Done running simulation. Path: {sim_config_path}\n\n\n")
-    logger.info(f"END. Current (PST) time: {get_pst_time()}")
-    
+    logger.info("END %s. Done running simulation. Path: %s", get_pst_time(), sim_config_path)
+
     return None
 
 def get_pst_time():

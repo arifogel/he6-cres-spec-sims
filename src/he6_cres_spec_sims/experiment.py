@@ -20,19 +20,18 @@ logger = logging.getLogger(__name__)
 # putting it here allows you to more easily run experiments interactively
 def run_local_experiment(dict_path):
 
-    logger.info(f"\n\n\n Beginning local simulation.\n\n\n")
+    logger.info("Beginning local simulation.")
 
     experiment_name = Path(dict_path).stem
 
     sim_experiment_params = json.load(open(dict_path))
     sim_experiment_params["experiment_name"] = experiment_name
 
-    for key, val in sim_experiment_params.items():
-        logger.info("{}: {}".format(key, val))
+    logger.info("\n".join("{}: {}".format(key, val) for key, val in sim_experiment_params.items()))
 
     sim_experiment = Experiment(sim_experiment_params)
 
-    logger.info(f"\n\n\n Done running simulation. {sim_experiment_params}")
+    logger.info("Done running simulation. %s", sim_experiment_params)
 
     return None
 
@@ -176,9 +175,7 @@ class Experiment:
     def run_sims(self, config_paths: List[Path]) -> None:
 
         for i, config_path in enumerate(config_paths):
-            logger.info("+++++++++++++++++++++++++++++++++++++++++++++++++\n\n"
-                        "Running simulation {} / {}\n\n"
-                        "+++++++++++++++++++++++++++++++++++++++++++++++++".format(i, len(config_paths)))
+            logger.info("Running simulation %d / %d", i, len(config_paths))
             simulation = sim.Simulation(config_path)
             simulation.run_full()
 
@@ -229,15 +226,13 @@ class ExpResults:
 
         for i, config_path in enumerate(config_paths):
 
-            logger.info("+++++++++++++++++++++++++++++++++++++++++++++++++\n\n"
-                        "Loading simulation {} / {}\n\n"
-                        "+++++++++++++++++++++++++++++++++++++++++++++++++".format(i, len(config_paths)))
+            logger.info("Loading simulation %d / %d", i, len(config_paths))
 
             # Get the simulation parameters from the config.
             config = sim_blocks.config.Config(config_path)
             field = config.eventbuilder.main_field
             trap_current = config.eventbuilder.trap_current
-            logger.info("\nSet field: {}, Trap current: {}\n".format(field, trap_current))
+            logger.info("Set field: {}, Trap current: {}".format(field, trap_current))
             results = sim.Results.load(config_path)
             tracks = results.dmtracks
             tracks["simulation_num"] = i

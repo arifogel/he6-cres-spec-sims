@@ -19,7 +19,7 @@ class EventBuilder:
 
     def run(self):
 
-        logger.info("~~~~~~~~~~~~EventBuilder Block~~~~~~~~~~~~~~\n")
+        logger.info("~~~~~~~~~~~~EventBuilder Block~~~~~~~~~~~~~~")
         logger.info("Constructing a set of trapped events:")
         # event_num denotes the number of trapped electrons simulated.
         event_num = 0
@@ -51,8 +51,13 @@ class EventBuilder:
 
             while not is_trapped and beta_num < betas_to_simulate:
                 if beta_num % 2500 == 0:
-                    logger.info( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
-                    logger.info( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
+                    logger.info(
+                        "Betas: %d/%d simulated betas. Events: %d/%s trapped events.",
+                        beta_num,
+                        betas_to_simulate - 1,
+                        event_num,
+                        events_to_simulate - 1,
+                    )
 
                 initial_position, initial_direction  = self.physics.generate_beta_position_direction()
                 energy = self.physics.generate_beta_energy()

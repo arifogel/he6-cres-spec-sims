@@ -203,7 +203,7 @@ class DAQ:
                         break
 
             build_file_stop = process_time()
-            logger.info( f"Time to build acq {acq}: {build_file_stop- build_file_start:.3f} s \n")
+            logger.info( f"Time to build acq {acq}: {build_file_stop- build_file_start:.3f} s")
 
             if max_chunks is not None and chunks_processed >= max_chunks:
                 break

@@ -85,15 +85,18 @@ class Simulation:
         stage_times["Results.save"] = time.perf_counter() - t0
 
         total_time = sum(stage_times.values())
-        logger.info("\n===== STAGE TIMING BREAKDOWN =====")
-        logger.info(f"betas_to_simulate={self.config.physics.betas_to_simulate}, "
-              f"events_to_simulate={self.config.physics.events_to_simulate}, "
-              f"trapped events (len(tracks_df))={len(tracks_df)}")
+        lines = [
+            "===== STAGE TIMING BREAKDOWN =====",
+            f"betas_to_simulate={self.config.physics.betas_to_simulate}, "
+            f"events_to_simulate={self.config.physics.events_to_simulate}, "
+            f"trapped events (len(tracks_df))={len(tracks_df)}",
+        ]
         for stage_name, stage_seconds in stage_times.items():
             pct = 100 * stage_seconds / total_time if total_time > 0 else 0
-            logger.info(f"  {stage_name:20s} {stage_seconds:9.3f}s  ({pct:5.1f}%)")
-        logger.info(f"  {'TOTAL (timed stages)':20s} {total_time:9.3f}s")
-        logger.info("===================================\n")
+            lines.append(f"  {stage_name:20s} {stage_seconds:9.3f}s  ({pct:5.1f}%)")
+        lines.append(f"  {'TOTAL (timed stages)':20s} {total_time:9.3f}s")
+        lines.append("===================================")
+        logger.info("\n".join(lines))
 
         return None
 

@@ -70,8 +70,7 @@ class TrapFieldProfile:
         func = lambda z: -1 * field_func(0, z)
 
         maximum = fmin(func, 0, xtol=1e-12, disp=False)[0]
-        logger.info("Trap width: ({},{})".format(-maximum, maximum))
-        logger.info("Maximum Field: {}".format(-1 * func(maximum)))
+        logger.info("Trap width: (%s,%s), Maximum Field: %s", -maximum, maximum, -1 * func(maximum))
 
         trap_width = (-maximum, maximum)
         return trap_width

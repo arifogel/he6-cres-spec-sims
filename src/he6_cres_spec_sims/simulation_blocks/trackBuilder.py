@@ -38,7 +38,7 @@ class TrackBuilder:
         """
         Builds scattered tracks for each event.
         """
-        logger.info("~~~~~~~~~~~~TrackBuilder Block~~~~~~~~~~~~~~\n")
+        logger.info("~~~~~~~~~~~~TrackBuilder Block~~~~~~~~~~~~~~")
         # Empty list to be filled with tracks.
         bands = []
         tracks_list = []
@@ -50,7 +50,7 @@ class TrackBuilder:
         #create tracks for every event
         for event_index, event in trapped_event_df.iterrows():
             if event_index % 2500 == 0:
-                logger.info("\nBuilding Event : %s", event_index)
+                logger.info("Building Event : %s", event_index)
 
             # Fill the event with computationally intensive properties.
             event = self.fill_in_properties(event)

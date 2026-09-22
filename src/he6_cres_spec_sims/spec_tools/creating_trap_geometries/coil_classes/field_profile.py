@@ -43,7 +43,7 @@ class Field_profile:
                 if not curr_name in self._coil_names:
                     self._coil_names.append(curr_name)
                 else:
-                    logger.warning('\nWARNING: Coil name "{}" already in use\nUsing default name "Coil {}"...\n'.format(curr_name, self._num_coils))
+                    logger.warning('WARNING: Coil name "{}" already in use, using default name "Coil {}"...'.format(curr_name, self._num_coils))
                     coil.name = "Coil {}".format(self._num_coils)
                     self._coil_names.append(curr_name)
 
@@ -217,8 +217,7 @@ class Field_profile:
 
             np.savetxt(pkl_path, map_array)
             tot_time = time.process_time() - start
-            logger.info("Time to create map_array for new field settings: %s \n", tot_time)
-            logger.info("Writing the map_array to csv. \npkl_path: %s", pkl_path)
+            logger.info("Time to create map_array for new field settings: %s, writing to csv: pkl_path=%s", tot_time, pkl_path)
 
         # Now use the map_array to do the interpolation.
         map_array = np.transpose(map_array)

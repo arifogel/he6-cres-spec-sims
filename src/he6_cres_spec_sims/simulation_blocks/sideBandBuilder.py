@@ -16,7 +16,7 @@ class SideBandBuilder:
 
     def run(self, tracks_df, bands):
 
-        logger.info("~~~~~~~~~~~~SideBandBuilder Block~~~~~~~~~~~~~~\n")
+        logger.info("~~~~~~~~~~~~SideBandBuilder Block~~~~~~~~~~~~~~")
         sideband_num = self.config.sidebandbuilder.sideband_num
         magnetic_modulation = self.config.sidebandbuilder.magnetic_modulation
         harmonic_sidebands = self.config.sidebandbuilder.harmonic_sidebands
