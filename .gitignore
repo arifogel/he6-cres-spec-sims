@@ -86,3 +86,4 @@ node_modules/
 # don't make that same tracked/untracked distinction, and were silently
 # dropping every .github/workflows/*.yaml file as a result.
 !.github/**
+!/renovate.json
