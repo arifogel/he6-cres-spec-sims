@@ -225,8 +225,9 @@ class DAQ:
         signal_time_series = np.zeros(shape=self.pts_per_fft * num_slices)
 
         # shape of signal_alive_condition: num_bands
-        # Vectorized equivalent of the per-band Python loop this used to be;
-        # see the precomputed _band_* arrays built once in run().
+        # Filters using the per-band arrays precomputed once in run() (not
+        # per-band attribute access here), so this stays a single vectorized
+        # numpy comparison even though it runs once per chunk.
         signal_alive_condition = np.where(
                 (~self._band_outside_bw)
                 & (self._band_acquisition == acq)
@@ -503,12 +504,12 @@ class DAQ:
         jThreshold0 = channel * freq_bins_in_spec
         thresholds = self.thresholds[jThreshold0:jThreshold0+freq_bins_in_spec]
 
-        # NOTE: previously this built up `data` via repeated np.append() calls in a
-        # nested Python loop. np.append() reallocates and copies the *entire* array
-        # on every call, so that pattern was O(n^2) in the number of bytes written
-        # and dominated the runtime. Here we instead collect each slice's bytes as
-        # small numpy arrays in a plain Python list (O(1) amortized append) and do
-        # a single np.concatenate() at the end. Output byte layout is unchanged.
+        # Collects each slice's own header/index-power-triplets/footer bytes as
+        # small numpy arrays in a plain Python list, then does a single
+        # np.concatenate() at the end. Growing one array via repeated
+        # np.append() calls in the loop instead would be O(n^2) in bytes
+        # written: each call reallocates and copies the entire array so far,
+        # unlike a Python list's own amortized O(1) append.
         chunks = []
 
         header = np.zeros(32, dtype="uint8")

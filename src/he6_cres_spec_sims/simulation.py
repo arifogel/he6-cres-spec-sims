@@ -51,9 +51,6 @@ class Simulation:
         if self.config.settings.sim_daq:
             daq = sim_blocks.DAQ.DAQ(self.config)
 
-        # Stage-level timing only -- no computed value or control flow is touched here.
-        # Printed as its own clearly-labeled block so it can be grepped straight out of
-        # a job's existing log file (see local_spec_sims.py's per-job log_path).
         stage_times = {}
 
         t0 = time.perf_counter()
