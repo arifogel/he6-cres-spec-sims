@@ -1,9 +1,25 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "he6-cres-spec-sims"
-version = "0.1.0"
-description = "Add your description here"
+name = "he6_cres_spec_sims"
+version = "0.2.0"
+description = "A package for simulating cres data."
 readme = "README.md"
 requires-python = ">=3.14"
+authors = [
+    {name = "RJ Taylor", email = "rjtaylo2@ncsu.edu"},
+    {name = "William (Drew) Byron", email = "wbyron@uw.edu"},
+    {name = "Nick Buzinsky", email = "nbuzin@uw.edu"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
     "argparse>=1.4.0",
     "awkward-pandas>=2023.8.0",
@@ -24,6 +40,10 @@ dependencies = [
     "tyro>=1.0.15",
     "uproot>=5.7.4",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/Helium6CRES/he6-cres-spec-sims"
+"Bug Tracker" = "https://github.com/Helium6CRES/he6-cres-spec-sims/issues"
 
 [dependency-groups]
 dev = [
