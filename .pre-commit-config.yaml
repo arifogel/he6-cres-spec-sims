@@ -12,6 +12,7 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix]
+        types_or: [python, pyi]
         exclude: &arifogel |
           (?x)^(
             config_files/example_run\.py|
@@ -61,6 +62,7 @@ repos:
             test/test_simulation_blocks\.py
           )$
       - id: ruff-format
+        types_or: [python, pyi]
         exclude: *arifogel
   - repo: https://github.com/thibaudcolas/pre-commit-stylelint
     rev: c04e74b560392d1602e683cfacff9ad134738f49 # frozen: v17.14.1
