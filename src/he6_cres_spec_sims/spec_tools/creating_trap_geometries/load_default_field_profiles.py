@@ -5,8 +5,12 @@ from he6_cres_spec_sims.spec_tools.creating_trap_geometries.coil_classes.trap_pr
 # from spec_tools.spec_calc.spec_calc import generate_triple_coil_field
 
 
+import logging
+
 from scipy.misc import derivative
 from scipy.optimize import fminbound
+
+logger = logging.getLogger(__name__)
 
 
 def load_main_magnet(main_field=1):
@@ -151,7 +155,7 @@ def load_he6_coils(main_field =0 , trap_current = 1):
     edge_windings = 44 / (5.17e-3 * 2)
     current_per_wire = trap_current
     # current_per_wire = (0.24687194322084335 / 1e-3) * trap_strength * main_field
-    print("coil current", current_per_wire, "A")
+    logger.debug("coil current %s A", current_per_wire)
 
     center_coil = Coil_form(1.14e-2,1.34e-2,-5.355e-3,5.355e-3,0,center_windings,-current_per_wire,"center coil")
 

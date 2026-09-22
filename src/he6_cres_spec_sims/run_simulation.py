@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import sys
 import argparse
+import logging
 from pathlib import Path
 import pytz
 import datetime
 
 import he6_cres_spec_sims.simulation as sim
+
+logger = logging.getLogger(__name__)
 
 #sys.path.append("/data/eliza4/he6_cres/simulation/he6-cres-spec-sims")
 
@@ -31,15 +34,13 @@ def main():
 
 def run_simulation(sim_config_path):
 
-    print(f"START. Current (PST) time: {get_pst_time()}")
-    print(f"\n\n\n Beginning simulation. Path: {sim_config_path} \n\n\n")
+    logger.info("START %s. Beginning simulation. Path: %s", get_pst_time(), sim_config_path)
 
     simulation = sim.Simulation(Path(sim_config_path))
     simulation.run_full()
 
-    print(f"\n\n\n Done running simulation. Path: {sim_config_path}\n\n\n")
-    print(f"END. Current (PST) time: {get_pst_time()}")
-    
+    logger.info("END %s. Done running simulation. Path: %s", get_pst_time(), sim_config_path)
+
     return None
 
 def get_pst_time():

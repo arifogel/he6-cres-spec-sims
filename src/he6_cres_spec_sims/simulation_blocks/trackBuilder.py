@@ -1,8 +1,12 @@
+import logging
+
 from .eventBuilder import *
 import he6_cres_spec_sims.spec_tools.spec_calc.spec_calc as sc
 import he6_cres_spec_sims.spec_tools.spec_calc.power_calc as pc
 import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
 from .Band import *
+
+logger = logging.getLogger(__name__)
 
 class TrackBuilder:
     """ Constructs a list of tracks (interrupted by scatters) making up the trapped event
@@ -28,13 +32,12 @@ class TrackBuilder:
         self.ExB = exb.ExB(self.config.trackbuilder.voltage_off_time_ms/1000., self.config.trackbuilder.voltage_on_time_ms/1000., self.config.trackbuilder.voltage_fractional_offset)
 
         self.verbosity = self.config.trackbuilder.verbose
-        print(self.config.trackbuilder.verbose)
+        logger.debug(self.config.trackbuilder.verbose)
 
     def run(self, trapped_event_df):
         """
         Builds scattered tracks for each event.
         """
-        print("~~~~~~~~~~~~TrackBuilder Block~~~~~~~~~~~~~~\n")
         # Empty list to be filled with tracks.
         bands = []
         tracks_list = []
@@ -46,7 +49,7 @@ class TrackBuilder:
         #create tracks for every event
         for event_index, event in trapped_event_df.iterrows():
             if event_index % 2500 == 0:
-                print("\nBuilding Event :", event_index)
+                logger.info("Building Event : %s", event_index)
 
             # Fill the event with computationally intensive properties.
             event = self.fill_in_properties(event)

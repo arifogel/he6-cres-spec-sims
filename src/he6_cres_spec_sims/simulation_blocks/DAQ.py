@@ -1,13 +1,18 @@
+import logging
+
 from scipy import interpolate
 import pandas as pd
 import numpy as np
 from time import process_time
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
+from shutil import rmtree
 
 import he6_cres_spec_sims.spec_tools.spec_calc.exb as exb
 from he6_cres_spec_sims.spec_tools.spec_calc.spec_calc import waveguide_beta
 from he6_cres_spec_sims.constants import *
+
+logger = logging.getLogger(__name__)
 
 class DAQ:
     """  If called, this module  passes through list of downmixed bands through the DAQ, producing fake .spec(k) files
@@ -34,8 +39,15 @@ class DAQ:
         self.n_channels = self.config.daq.n_channels #1 or 2, for lower/ upper halves of spectrogram
         self.bins = [slice(0,4096), slice(4096,8192)] #which frequency bins to write for each channel
 
-        # This block size is used to create chunks of spec file that don't overwhelm the ram.
-        self.slice_block = int(250 * 32768 / config.daq.freq_bins) * self.config.daq.roach_avg
+
+        # Optionally overridden via config.daq.slice_block (e.g. for tuning
+        # chunk size against cache behavior); defaults to the formula below
+        # if not set in the yaml config, matching all existing behavior.
+        if config.daq.slice_block is not None:
+                self.slice_block = int(config.daq.slice_block)
+        else:
+            # This block size is used to create chunks of spec file that don't overwhelm the ram.
+            self.slice_block = int(250 * 32768 / config.daq.freq_bins) * self.config.daq.roach_avg
 
         #pre-allocate this so that I do not have to keep creating linspace times
         self.t = np.linspace(0, self.slice_block*self.delta_t, self.pts_per_fft*self.slice_block)
@@ -47,10 +59,15 @@ class DAQ:
                 #Should we do more than 10k slices read in? Perhaps...
                 self.noise_mean[self.bins[n]] = self.spec_to_array(self.config.daq.noise_paths[n]).mean(axis=0)
         except Exception as e:
-            print("Noise loading failed!")
-            print(str(e))
+            logger.error("Noise loading failed!")
+            logger.error(str(e))
+            raise RuntimeError("Noise loading failed") from e
 
-        self.noise_tau = np.nan_to_num(1./np.log(1 + 1./self.noise_mean), 0)
+        zero_noise_bins = int(np.sum(self.noise_mean == 0))
+        if zero_noise_bins:
+            logger.warning("%d of %d noise_mean bins are exactly zero", zero_noise_bins, self.noise_mean.size)
+        with np.errstate(divide="ignore"):
+            self.noise_tau = np.nan_to_num(1./np.log(1 + 1./self.noise_mean), 0)
 
         #amplitude gain g_overall(f) experienced by both signal and noise. Class object is interpolation function g(f)
         #If frequency outside of bandwidth, automatically returns g(f) = 0 (aka, alias prevention)
@@ -107,12 +124,27 @@ class DAQ:
 
         return np.abs(gSignal)
 
-    def run(self, bands):
+    def run(self, bands, max_chunks=None):
         """
         This function is responsible for building out the spec files and calling the below methods.
+        max_chunks: if set, stops after processing this many chunks total
+        (across all acquisitions) instead of the full acq_length. Intended
+        for quick timing trials (e.g. comparing slice_block candidates)
+        without waiting for a full acquisition; leave unset (None) for
+        normal, complete runs -- default behavior is unchanged.
         """
         # Flatten into a 1D NumPy array
         self.bands = np.hstack(bands)
+
+        # Precompute per-band attribute arrays once, up front, so that the
+        # per-chunk "which bands are alive right now" filter in
+        # get_signal_time_series() can be a vectorized numpy comparison
+        # instead of a pure-Python attribute-access loop over every band in
+        # the simulation, repeated on every chunk of every acquisition.
+        self._band_outside_bw = np.array([b.outside_BW for b in self.bands], dtype=bool)
+        self._band_acquisition = np.array([b.acquisition for b in self.bands])
+        self._band_start_time = np.array([b.start_time for b in self.bands], dtype=float)
+        self._band_end_time = np.array([b.end_time for b in self.bands], dtype=float)
 
         # Define a random phase for each band. Need to be associated per track (lasting multiple chunks)
         # TODO: This is technically (actually) incorrect, there is an overall random phase that arises from
@@ -126,9 +158,10 @@ class DAQ:
 
         spec_array = np.zeros(shape=(self.slice_block, self.config.daq.freq_bins))
         initial_packet = 0
+        chunks_processed = 0
 
         for acq in range(self.n_acquisitions):
-            print( f"Building spec acquistion {acq}. {self.config.daq.acq_length} s, {self.slices_in_spec} slices.")
+            logger.info( f"Building spec acquistion {acq}. {self.config.daq.acq_length} s, {self.slices_in_spec} slices.")
             build_file_start = process_time()
             # Iterate by the slice_block until you hit the end of the spec file.
             for start_slice in np.arange(0, self.slices_in_roach, self.slice_block):
@@ -165,17 +198,24 @@ class DAQ:
                 initial_packet += spec_array.shape[0]
                 initial_packet = initial_packet % 2**20
 
-            build_file_stop = process_time()
-            print( f"Time to build acq {acq}: {build_file_stop- build_file_start:.3f} s \n")
+                chunks_processed += 1
+                if max_chunks is not None and chunks_processed >= max_chunks:
+                        break
 
-        print("Done building {} files. ".format(self.config.daq.spec_suffix))
+            build_file_stop = process_time()
+            logger.info( f"Time to build acq {acq}: {build_file_stop- build_file_start:.3f} s")
+
+            if max_chunks is not None and chunks_processed >= max_chunks:
+                break
+
+        logger.info("Done building {} files. ".format(self.config.daq.spec_suffix))
 
     def get_signal_time_series(self, acq, start_slice, stop_slice):
         """
         Build a time-domain array of signal (Dimensions = N_FFT Bins x num_slices)
         Later, this will be converted to the frequency domain S(f) via FFT, with the same dimensions
         """
-        print(f"acq = {acq}, slices = [{start_slice}:{stop_slice}]")
+        logger.debug(f"acq = {acq}, slices = [{start_slice}:{stop_slice}]")
         slice_start_time = start_slice * self.delta_t
         slice_stop_time = stop_slice * self.delta_t
         num_slices = stop_slice - start_slice
@@ -185,12 +225,15 @@ class DAQ:
         signal_time_series = np.zeros(shape=self.pts_per_fft * num_slices)
 
         # shape of signal_alive_condition: num_bands
-        signal_alive_condition = np.where([(
-            (b.outside_BW == False)
-            & (b.acquisition == acq)
-            & (b.start_time <= slice_stop_time)
-            & (b.end_time >= slice_start_time))
-            for b in self.bands])[0]
+        # Filters using the per-band arrays precomputed once in run() (not
+        # per-band attribute access here), so this stays a single vectorized
+        # numpy comparison even though it runs once per chunk.
+        signal_alive_condition = np.where(
+                (~self._band_outside_bw)
+                & (self._band_acquisition == acq)
+                & (self._band_start_time <= slice_stop_time)
+                & (self._band_end_time >= slice_start_time)
+        )[0]
 
         eligible_bands = self.bands[signal_alive_condition]
 
@@ -284,7 +327,8 @@ class DAQ:
         noise_array += self.config.dist_interface.rng.normal(size=array_size)
 
         # Want to scale so that mean power agrees with config (based on Chi-Squared k=2 for unsummed bins)
-        tau_noise = 1./np.log(1 + 1./ self.noise_mean)
+        with np.errstate(divide="ignore"):
+            tau_noise = 1./np.log(1 + 1./ self.noise_mean)
         noise_array *= np.sqrt(tau_noise /  2.)
 
         return noise_array
@@ -295,7 +339,7 @@ class DAQ:
         num_slices = signal_array.shape[0]
         #need to do sum over slices that is divisible by roach_avg
         if num_slices %  self.config.daq.roach_avg:
-            print("Num slices really should be divisible by roach_avg! Why is it not!? Trimming")
+            logger.warning("Num slices really should be divisible by roach_avg! Why is it not!? Trimming")
             num_slices_divisible = num_slices - (num_slices % self.config.daq.roach_avg)
             signal_array = signal_array[:num_slices_divisible,:] # Trim remainder rows
 
@@ -322,10 +366,8 @@ class DAQ:
         return file_paths
 
     def safe_mkdir(self, new_dir):
-        # If new_dir doesn't exist, then create it.
-        if not new_dir.is_dir():
-            new_dir.mkdir()
-            print("created directory : ", new_dir)
+        new_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("created directory : %s", new_dir)
 
     def create_results_dir(self):
         # First make a results_dir with the same name as the config.
@@ -428,7 +470,11 @@ class DAQ:
 
         # use tau from Non-Exponential noise doc: https://drive.google.com/file/d/10EGOZGXkmiXHXLeyHQ1qnNcc_HK8FPxj/view
         #thresholds = means
-        thresholds = 1. / np.log(1. + 1./means)
+        zero_mean_bins = int(np.sum(means == 0))
+        if zero_mean_bins:
+            logger.warning("%d of %d threshold-averaging bins are exactly zero", zero_mean_bins, means.size)
+        with np.errstate(divide="ignore"):
+            thresholds = 1. / np.log(1. + 1./means)
         thresholds *= self.config.daq.threshold_factor
         thresholds = np.clip(thresholds, 1,None)
         return thresholds
@@ -451,34 +497,50 @@ class DAQ:
 
         slices_in_spec, freq_bins_in_spec = spec_array.shape
 
-        # Append mostly empty packet header to data
-        header = np.zeros(32)
-
-        # Append empty (zero) footer. 3 zeros signals end of spectrogram slice
-        footer = np.zeros(3)
-
         if self.config.daq.threshold_factor is None or self.config.daq.threshold_factor < 0:
-                raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
-
-        data = np.array([])
+            raise ValueError('Invalid DAQ::threshold_factor. Set to non-negative real value!')
 
         #initial index (e.g. 0 or 4096 for channels 0,1) in thresholds to compare to
         jThreshold0 = channel * freq_bins_in_spec
         thresholds = self.thresholds[jThreshold0:jThreshold0+freq_bins_in_spec]
 
+        # Collects each slice's own header/index-power-triplets/footer bytes as
+        # small numpy arrays in a plain Python list, then does a single
+        # np.concatenate() at the end. Growing one array via repeated
+        # np.append() calls in the loop instead would be O(n^2) in bytes
+        # written: each call reallocates and copies the entire array so far,
+        # unlike a Python list's own amortized O(1) append.
+        chunks = []
+
+        header = np.zeros(32, dtype="uint8")
+        footer = np.zeros(3, dtype="uint8")
+
+        for s in range(slices_in_spec):
+            header[9:12] = self.packet_num_base_256(initial_packet + s)
+            chunks.append(header.copy())
+
+            # select indices of spectrogram [0-4096] above threshold
+            indices = np.where(spec_array[s] > thresholds)[0]
+            if indices.size:
+                # add_high_power_point(j) == [j // 256, j % 256]; vectorize that encoding
+                idx_hi = (indices // 256).astype("uint8")
+                idx_lo = (indices % 256).astype("uint8")
+                powers = spec_array[s][indices].astype("uint8")
+
+                # interleave into [hi, lo, power, hi, lo, power, ...] to match the
+                # original per-index write order
+                triplets = np.empty((indices.size, 3), dtype="uint8")
+                triplets[:, 0] = idx_hi
+                triplets[:, 1] = idx_lo
+                triplets[:, 2] = powers
+                chunks.append(triplets.reshape(-1))
+
+            chunks.append(footer)
+
+        data = np.concatenate(chunks).astype("uint8")
+
         # Pass "ab" to append to a binary file
         with open(speck_file_path, "ab") as speck_file:
-            for s in range(slices_in_spec):
-                header[9:12] = self.packet_num_base_256(initial_packet + s)
-                data = np.append(data, header)
-                # select indices of spectrogram [0-4096] above threshold. Loop is slow!
-                indices = np.where(spec_array[s] >  thresholds)[0]
-                for j in indices:
-                    data = np.append(data, self.add_high_power_point(j))
-                    data = np.append(data, spec_array[s][j])
-                data = np.append(data, footer)
-
-            data = data.flatten().astype("uint8")
             data.tofile(speck_file)
 
         #fractionHighPowerPoints =  (len(data) - (len(header) + len(footer))  * slices_in_spec)  / (slices_in_spec * freq_bins_in_spec)

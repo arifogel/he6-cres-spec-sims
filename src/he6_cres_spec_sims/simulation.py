@@ -18,6 +18,9 @@ Classes contained in module:
 
 """
 
+import time
+import logging
+
 import pandas as pd
 from numpy import hstack
 
@@ -28,6 +31,8 @@ import he6_cres_spec_sims.simulation_blocks.trackBuilder
 import he6_cres_spec_sims.simulation_blocks.sideBandBuilder
 import he6_cres_spec_sims.simulation_blocks.dmTrackBuilder
 import he6_cres_spec_sims.simulation_blocks.DAQ
+
+logger = logging.getLogger(__name__)
 
 class Simulation:
     """ Chains together simulation blocks to run full simulation, outputs .csv of Results (defined below)
@@ -46,17 +51,49 @@ class Simulation:
         if self.config.settings.sim_daq:
             daq = sim_blocks.DAQ.DAQ(self.config)
 
-        tracks_df = eventbuilder.run()
-        tracks_df, bands = trackbuilder.run(tracks_df)
-        bands = sidebandbuilder.run(tracks_df, bands)
-        downmixed_tracks_df = dmtrackbuilder.run(tracks_df, bands)
-        if self.config.settings.sim_daq:
-            spec_array = daq.run(bands)
+        stage_times = {}
 
+        t0 = time.perf_counter()
+        tracks_df = eventbuilder.run()
+        stage_times["EventBuilder"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        tracks_df, bands = trackbuilder.run(tracks_df)
+        stage_times["TrackBuilder"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        bands = sidebandbuilder.run(tracks_df, bands)
+        stage_times["SideBandBuilder"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        downmixed_tracks_df = dmtrackbuilder.run(tracks_df, bands)
+        stage_times["DMTrackBuilder"] = time.perf_counter() - t0
+
+        if self.config.settings.sim_daq:
+            t0 = time.perf_counter()
+            spec_array = daq.run(bands)
+            stage_times["DAQ"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
         # Save the results of the simulation:
         # For now only write downmixed_tracks to keep things lightweight.
         results = Results(downmixed_tracks_df, bands)
         results.save(self.config_path)
+        stage_times["Results.save"] = time.perf_counter() - t0
+
+        total_time = sum(stage_times.values())
+        lines = [
+            "===== STAGE TIMING BREAKDOWN =====",
+            f"betas_to_simulate={self.config.physics.betas_to_simulate}, "
+            f"events_to_simulate={self.config.physics.events_to_simulate}, "
+            f"trapped events (len(tracks_df))={len(tracks_df)}",
+        ]
+        for stage_name, stage_seconds in stage_times.items():
+            pct = 100 * stage_seconds / total_time if total_time > 0 else 0
+            lines.append(f"  {stage_name:20s} {stage_seconds:9.3f}s  ({pct:5.1f}%)")
+        lines.append(f"  {'TOTAL (timed stages)':20s} {total_time:9.3f}s")
+        lines.append("===================================")
+        logger.info("\n".join(lines))
 
         return None
 
@@ -66,7 +103,7 @@ class Simulation:
         try:
             results = Results.load(self.config_path)
         except Exception as e:
-            print("You don't have results to run the daq on.")
+            logger.error("You don't have results to run the daq on.")
             raise e
 
         # Initialize all necessary simulation blocks.
@@ -107,14 +144,14 @@ class Results:
         # If results_dir doesn't exist, then create it.
         if not results_dir.is_dir():
             results_dir.mkdir()
-            print("created directory : ", results_dir)
+            logger.info("created directory : %s", results_dir)
 
         # Now write the results to results_dir:
         for data_name, data in results_dict.items():
             try:
                 data.to_csv(results_dir / "{}.csv".format(data_name))
             except Exception as e:
-                print("Unable to write {} data.".format(data_name))
+                logger.error("Unable to write {} data.".format(data_name))
                 raise e
 
     def load(self, config_path):
@@ -126,7 +163,7 @@ class Results:
                 df = pd.read_csv( results_dir / "{}.csv".format(data_name), index_col=[0])
                 results_dict[data_name] = df
             except Exception as e:
-                print("Unable to load {} data.".format(data_name))
+                logger.error("Unable to load {} data.".format(data_name))
                 raise e
 
         results = results_dict["dmtracks"]

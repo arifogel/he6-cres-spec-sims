@@ -1,8 +1,12 @@
+import logging
+
 import numpy as np
 import pandas as pd
 
 from .physics import *
 from he6_cres_spec_sims.constants import *
+
+logger = logging.getLogger(__name__)
 
 class EventBuilder:
     """  Constructs a list of betas which are trapped within the detector volume
@@ -15,8 +19,7 @@ class EventBuilder:
 
     def run(self):
 
-        print("~~~~~~~~~~~~EventBuilder Block~~~~~~~~~~~~~~\n")
-        print("Constructing a set of trapped events:")
+        logger.info("Constructing a set of trapped events:")
         # event_num denotes the number of trapped electrons simulated.
         event_num = 0
         # beta_num denotes the total number of betas produced in the trap.
@@ -30,7 +33,16 @@ class EventBuilder:
         if betas_to_simulate == -1:
             betas_to_simulate = np.inf
 
-        print( f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
+        logger.info( f"Simulating: num_events:{events_to_simulate}, num_betas:{betas_to_simulate}")
+
+        # Collected as a plain list, concatenated once at the end: pd.concat()
+        # copies its entire first argument, so calling it inside the loop once
+        # per trapped event would make the total cost of this loop O(N^2) in
+        # the number of trapped events, not O(N). A single pd.concat() over
+        # the whole list at the end produces the same DataFrame (same row
+        # order, since ignore_index=True re-indexes sequentially either way)
+        # in O(N).
+        trapped_event_dfs = []
 
         while (event_num < events_to_simulate) and (beta_num < betas_to_simulate):
             # generate trapped beta
@@ -38,8 +50,13 @@ class EventBuilder:
 
             while not is_trapped and beta_num < betas_to_simulate:
                 if beta_num % 2500 == 0:
-                    print( f"\nBetas: {beta_num}/{betas_to_simulate - 1} simulated betas.")
-                    print( f"\nEvents: {event_num}/{events_to_simulate-1} trapped events.")
+                    logger.info(
+                        "Betas: %d/%d simulated betas. Events: %d/%s trapped events.",
+                        beta_num,
+                        betas_to_simulate - 1,
+                        event_num,
+                        events_to_simulate - 1,
+                    )
 
                 initial_position, initial_direction  = self.physics.generate_beta_position_direction()
                 energy = self.physics.generate_beta_energy()
@@ -49,16 +66,17 @@ class EventBuilder:
 
                 is_trapped = self.trap_condition(single_event_df)
 
-            if event_num == 0:
-                trapped_event_df = single_event_df
-
-            elif beta_num == betas_to_simulate:
+            # If the beta budget is exhausted on the same beta that turns out
+            # to be trapped, that event is dropped -- except the very first
+            # trapped event (event_num == 0), which is always kept even if it
+            # also exhausts the budget.
+            if event_num != 0 and beta_num == betas_to_simulate:
                 break
 
-            else:
-                trapped_event_df = pd.concat([trapped_event_df, single_event_df], ignore_index=True)
-
+            trapped_event_dfs.append(single_event_df)
             event_num += 1
+
+        trapped_event_df = pd.concat(trapped_event_dfs, ignore_index=True)
         return trapped_event_df
 
     def construct_untrapped_track_df( self, beta_position, beta_direction, beta_energy, event_num, beta_num):

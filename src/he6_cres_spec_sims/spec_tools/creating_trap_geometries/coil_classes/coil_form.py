@@ -1,9 +1,12 @@
+import logging
 import math
 import numpy as np
 from scipy.integrate import romberg
 from scipy.misc import derivative
 
 from he6_cres_spec_sims.constants import *
+
+logger = logging.getLogger(__name__)
 
 class Coil_form:
     """
@@ -27,8 +30,18 @@ class Coil_form:
         
         while self._inner_radius >= self._outer_radius:
         
-            print("ERROR: inner radius greater than outer radius")
-            self._inner_radius = input("Reset inner radius: ")
+            logger.error("ERROR: inner radius greater than outer radius")
+            try:
+                response = input("Reset inner radius: ")
+            except EOFError:
+                # No interactive stdin available to recover from (closed --
+                # the expected case for any batch/automated run, e.g.
+                # stage1_task, which has no attached terminal).
+                raise ValueError(
+                    "inner radius ({}) greater than outer radius ({}), and no "
+                    "interactive stdin available to reset it".format(self._inner_radius, self._outer_radius)
+                )
+            self._inner_radius = float(response)
         
     def get_coil_dimensions(self):
         """
@@ -112,8 +125,7 @@ class Coil_form:
                     integrand = first_term + second_term
                     
                 except:
-                    print("WARNING: Unhandled value for Br integrand at radius = {}, theta = {}, z = {}".format(r,theta,z))
-                    print("Returning 0 for integrand; may affect accuracy")
+                    logger.warning("WARNING: Unhandled value for Br integrand at radius = {}, theta = {}, z = {}. Returning 0 for integrand; may affect accuracy".format(r,theta,z))
                     
                     
                     integrand = 0
@@ -141,8 +153,7 @@ class Coil_form:
                     integrand = first_term +  second_term + third_term
                     
                 except:
-                    print("WARNING: Unhandled value for Bz integrand at radius = {}, theta = {}, z = {}".format(r,theta,z))
-                    print("Returning 0 for integrand; may affect accuracy")
+                    logger.warning("WARNING: Unhandled value for Bz integrand at radius = {}, theta = {}, z = {}. Returning 0 for integrand; may affect accuracy".format(r,theta,z))
                     integrand = 0
     
                 return integrand
@@ -177,7 +188,8 @@ class Coil_form:
             return (Bx,By,Bz)
             
         else:
-            print("ERROR: {} not a valid coordinate system".format(return_coordinates))
+            logger.error("ERROR: {} not a valid coordinate system".format(field_coordinates))
+            raise ValueError("{} not a valid coordinate system".format(field_coordinates))
             
     def field_strength(self,radius,zpos):
         """

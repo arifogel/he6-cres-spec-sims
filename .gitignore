@@ -69,3 +69,20 @@ ipython_config.py
 # Development testing
 dev_testing/
 temp*
+
+# Bazel / tooling
+/bazel-*
+/.ijwb
+/.ruff_cache
+node_modules/
+*.tgz
+*.gz
+
+# Never ignore anything under .github, regardless of any blanket pattern
+# above (e.g. *.yaml/*.json): those already-tracked workflow files aren't
+# actually hidden from plain git commands (git only applies .gitignore to
+# untracked paths), but tools with their own gitignore-pattern-matching
+# file-discovery (e.g. pre-commit's own file list for hooks like prettier)
+# don't make that same tracked/untracked distinction, and were silently
+# dropping every .github/workflows/*.yaml file as a result.
+!.github/**

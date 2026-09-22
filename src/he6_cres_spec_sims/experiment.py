@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import json
+import logging
 from natsort import natsorted
 import numpy as np
 import pandas as pd
@@ -13,23 +14,24 @@ import he6_cres_spec_sims.simulation as sim
 import he6_cres_spec_sims.simulation_blocks as sim_blocks
 import he6_cres_spec_sims.simulation_blocks.config
 
+logger = logging.getLogger(__name__)
+
 #this function runs everything, previously in run_local_experiment.py script,
 # putting it here allows you to more easily run experiments interactively
 def run_local_experiment(dict_path):
 
-    print(f"\n\n\n Beginning local simulation.\n\n\n")
+    logger.info("Beginning local simulation.")
 
     experiment_name = Path(dict_path).stem
 
     sim_experiment_params = json.load(open(dict_path))
     sim_experiment_params["experiment_name"] = experiment_name
 
-    for key, val in sim_experiment_params.items():
-        print("{}: {}".format(key, val))
+    logger.info("\n".join("{}: {}".format(key, val) for key, val in sim_experiment_params.items()))
 
     sim_experiment = Experiment(sim_experiment_params)
 
-    print(f"\n\n\n Done running simulation. {sim_experiment_params}")
+    logger.info("Done running simulation. %s", sim_experiment_params)
 
     return None
 
@@ -72,7 +74,7 @@ def get_config_paths(experiment_params: dict) -> List[Path]:
 
 
 class Experiment:
-    def __init__(self, experiment_params: dict, config_dict = None) -> None:
+    def __init__(self, experiment_params: dict, config_dict = None, generate_configs_only: bool = False) -> None:
 
         self.experiment_params = experiment_params
 
@@ -80,12 +82,12 @@ class Experiment:
         if config_dict is not None:
             self.load_config_yaml(config_dict)
 
-        self.run_experiment(self.experiment_params)
+        self.run_experiment(self.experiment_params, generate_configs_only=generate_configs_only)
 
     def load_config_yaml(self, yaml_config_dict: dict) -> None:
         self.config_dict = yaml_config_dict
 
-    def run_experiment(self, experiment_params: dict) -> None:
+    def run_experiment(self, experiment_params: dict, generate_configs_only: bool = False) -> None:
 
         # Make all the config files specified by the experiment dictionary.
         self.create_configs_for_experiment(experiment_params)
@@ -96,9 +98,11 @@ class Experiment:
         # Collect all the config path names.
         self.config_paths = get_config_paths(experiment_params)
 
-        # Run all of those simulations.
-        self.run_sims(self.config_paths)
-
+        # Run all of those simulations, unless the caller only wants the
+        # configs generated (e.g. to dispatch each one independently
+        # elsewhere) without also running them here sequentially.
+        if not generate_configs_only:
+                self.run_sims(self.config_paths)
         return None
 
     def create_configs_for_experiment(self, experiment_params: dict) -> None:
@@ -107,12 +111,11 @@ class Experiment:
         experiment_dir = get_experiment_dir(experiment_params)
 
         # Make the experiments_dir if it doesn't exist. May want to delete contents here?
-        if not experiment_dir.is_dir():
-            experiment_dir.mkdir()
-            print("Created directory: {} ".format(experiment_dir))
+        if experiment_dir.exists() and not experiment_dir.is_dir():
+            raise ValueError("Not a directory: {} ".format(experiment_dir))
+        experiment_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("Created directory: {} ".format(experiment_dir))
 
-        else:
-            raise ValueError("Directory already exists: {} ".format(experiment_dir))
 
         # Grab data from experiment_params dict.
         isotope = experiment_params["isotope"]
@@ -172,9 +175,7 @@ class Experiment:
     def run_sims(self, config_paths: List[Path]) -> None:
 
         for i, config_path in enumerate(config_paths):
-            print("+++++++++++++++++++++++++++++++++++++++++++++++++\n\n")
-            print("Running simulation {} / {}\n\n".format(i, len(config_paths)))
-            print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+            logger.info("Running simulation %d / %d", i, len(config_paths))
             simulation = sim.Simulation(config_path)
             simulation.run_full()
 
@@ -225,15 +226,13 @@ class ExpResults:
 
         for i, config_path in enumerate(config_paths):
 
-            print("+++++++++++++++++++++++++++++++++++++++++++++++++\n\n")
-            print("Loading simulation {} / {}\n\n".format(i, len(config_paths)))
-            print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+            logger.info("Loading simulation %d / %d", i, len(config_paths))
 
             # Get the simulation parameters from the config.
             config = sim_blocks.config.Config(config_path)
             field = config.eventbuilder.main_field
             trap_current = config.eventbuilder.trap_current
-            print("\nSet field: {}, Trap current: {}\n".format(field, trap_current))
+            logger.info("Set field: {}, Trap current: {}".format(field, trap_current))
             results = sim.Results.load(config_path)
             tracks = results.dmtracks
             tracks["simulation_num"] = i
@@ -256,7 +255,7 @@ class ExpResults:
 def get_config_paths_results(experiment_config_path: Path) -> List[Path]:
 
     experiment_dir = experiment_config_path.parents[0]
-    print(experiment_dir)
+    logger.debug("experiment_dir=%s", experiment_dir)
 
     suffix = "T.yaml"
     config_paths = [

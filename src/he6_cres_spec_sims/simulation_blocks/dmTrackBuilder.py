@@ -1,4 +1,8 @@
+import logging
+
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 class DMTrackBuilder:
     """ Downmixes start_freq and end_freq of simulated tracks to observed frequency band out of DAQ
@@ -7,9 +11,8 @@ class DMTrackBuilder:
         self.config = config
 
     def run(self, tracks_df, bands):
-        print("~~~~~~~~~~~~DMTrackBuilder Block~~~~~~~~~~~~~~\n")
         mixer_freq = self.config.downmixer.mixer_freq
-        print( "Downmixing the cyclotron frequency with a {} GHz signal".format( np.around(mixer_freq * 1e-9, 4)))
+        logger.info("Downmixing the cyclotron frequency with a {} GHz signal".format( np.around(mixer_freq * 1e-9, 4)))
         downmixed_tracks_df = tracks_df.copy()
         downmixed_tracks_df["start_freq"] -= mixer_freq
         downmixed_tracks_df["end_freq"] -= mixer_freq
