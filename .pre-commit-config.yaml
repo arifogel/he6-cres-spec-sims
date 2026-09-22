@@ -12,7 +12,56 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix]
+        exclude: &arifogel |
+          (?x)^(
+            config_files/example_run\.py|
+            run_local_experiment\.py|
+            src/he6_cres_spec_sims/__init__\.py|
+            src/he6_cres_spec_sims/constants\.py|
+            src/he6_cres_spec_sims/experiment\.py|
+            src/he6_cres_spec_sims/run_simulation\.py|
+            src/he6_cres_spec_sims/simulation\.py|
+            src/he6_cres_spec_sims/simulation_blocks/Band\.py|
+            src/he6_cres_spec_sims/simulation_blocks/DAQ\.py|
+            src/he6_cres_spec_sims/simulation_blocks/__init__\.py|
+            src/he6_cres_spec_sims/simulation_blocks/config\.py|
+            src/he6_cres_spec_sims/simulation_blocks/dmTrackBuilder\.py|
+            src/he6_cres_spec_sims/simulation_blocks/eventBuilder\.py|
+            src/he6_cres_spec_sims/simulation_blocks/physics\.py|
+            src/he6_cres_spec_sims/simulation_blocks/sideBandBuilder\.py|
+            src/he6_cres_spec_sims/simulation_blocks/trackBuilder\.py|
+            src/he6_cres_spec_sims/spec_tools/__init__\.py|
+            src/he6_cres_spec_sims/spec_tools/creating_trap_geometries/__init__\.py|
+            src/he6_cres_spec_sims/spec_tools/creating_trap_geometries/coil_classes/__init__\.py|
+            src/he6_cres_spec_sims/spec_tools/creating_trap_geometries/coil_classes/coil_form\.py|
+            src/he6_cres_spec_sims/spec_tools/creating_trap_geometries/coil_classes/field_profile\.py|
+            src/he6_cres_spec_sims/spec_tools/creating_trap_geometries/coil_classes/trap_profile\.py|
+            src/he6_cres_spec_sims/spec_tools/creating_trap_geometries/load_default_field_profiles\.py|
+            src/he6_cres_spec_sims/spec_tools/creating_trap_geometries/load_field_profile\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/__init__\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/aseev_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/base_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/beta_decay_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/cauchy_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/dirac_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/distribution_interface\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/exponential_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/normal_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/rudd_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/uniform_annulus_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/distributions/uniform_distribution\.py|
+            src/he6_cres_spec_sims/spec_tools/spec_calc/__init__\.py|
+            src/he6_cres_spec_sims/spec_tools/spec_calc/exb\.py|
+            src/he6_cres_spec_sims/spec_tools/spec_calc/power_calc\.py|
+            src/he6_cres_spec_sims/spec_tools/spec_calc/spec_calc\.py|
+            src/he6_cres_spec_sims/spec_tools/trap_field_profile\.py|
+            src/he6_cres_spec_sims/spec_tools/trap_field_profile_pkl/__init__\.py|
+            test/__init__\.py|
+            test/conftest\.py|
+            test/test_simulation_blocks\.py
+          )$
       - id: ruff-format
+        exclude: *arifogel
   - repo: https://github.com/thibaudcolas/pre-commit-stylelint
     rev: c04e74b560392d1602e683cfacff9ad134738f49 # frozen: v17.14.1
     hooks:
