@@ -12,12 +12,7 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix]
-        files: &arifogel |
-          (?x)^(
-            placeholder.*.py
-          )$
       - id: ruff-format
-        files: *arifogel
   - repo: https://github.com/thibaudcolas/pre-commit-stylelint
     rev: c04e74b560392d1602e683cfacff9ad134738f49 # frozen: v17.14.1
     hooks:
