@@ -7,6 +7,9 @@ on:
       - "MODULE.bazel"
       - ".bazelrc"
       - ".bazelversion"
+      # This repo's own tools/uv/uv_extension.bzl is a local module extension -- changes to
+      # it can affect MODULE.bazel.lock too, the same as MODULE.bazel itself.
+      - "**/*.bzl"
 
 jobs:
   update-bazel-lockfile:
