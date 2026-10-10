@@ -155,7 +155,15 @@ class DAQ:
         self.create_results_dir()
         self.spec_file_paths = self.build_file_paths(self.n_acquisitions, self.n_channels, self.spec_files_dir)
         self.write_empty_files(self.spec_file_paths)
+        self._write_acquisitions(max_chunks)
 
+        logger.info("Done building {} files. ".format(self.config.daq.spec_suffix))
+
+    def _write_acquisitions(self, max_chunks):
+        """
+        Builds every acquisition chunk by chunk and appends it to the spec files in self.spec_file_paths.
+        max_chunks: see run().
+        """
         spec_array = np.zeros(shape=(self.slice_block, self.config.daq.freq_bins))
         initial_packet = 0
         chunks_processed = 0
@@ -207,8 +215,6 @@ class DAQ:
 
             if max_chunks is not None and chunks_processed >= max_chunks:
                 break
-
-        logger.info("Done building {} files. ".format(self.config.daq.spec_suffix))
 
     def get_signal_time_series(self, acq, start_slice, stop_slice):
         """
