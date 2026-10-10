@@ -26,6 +26,9 @@ jobs:
         run: |
           bazel build --@pypi//venv=dev //...
 
+      - name: Test Everything
+        run: bazel test //...
+
   lint-and-format:
     runs-on: ubuntu-latest
     steps:

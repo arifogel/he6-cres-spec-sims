@@ -56,10 +56,7 @@ repos:
             src/he6_cres_spec_sims/spec_tools/spec_calc/power_calc\.py|
             src/he6_cres_spec_sims/spec_tools/spec_calc/spec_calc\.py|
             src/he6_cres_spec_sims/spec_tools/trap_field_profile\.py|
-            src/he6_cres_spec_sims/spec_tools/trap_field_profile_pkl/__init__\.py|
-            test/__init__\.py|
-            test/conftest\.py|
-            test/test_simulation_blocks\.py
+            src/he6_cres_spec_sims/spec_tools/trap_field_profile_pkl/__init__\.py
           )$
       - id: ruff-format
         types_or: [python, pyi]
