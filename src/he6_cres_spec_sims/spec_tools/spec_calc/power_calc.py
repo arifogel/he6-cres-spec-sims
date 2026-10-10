@@ -30,4 +30,4 @@ def power_calc(center_x, center_y, frequency, field, trap_radius):
     power = (Q*v_perp/2.) **2 / P_lambda * sp.jv(0, kc*center_rho)**2 * sp.jv(0, kc*Rcycl)**2 / 4.
 
     # To vectorize (for speed), we don't want an if statement, just remove Nans for cutoff frequencies
-    return np.nan_to_num(power, copy=False, nan=0, posinf=0)
+    return np.nan_to_num(power, nan=0, posinf=0)
