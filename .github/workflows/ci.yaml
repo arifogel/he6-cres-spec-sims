@@ -22,12 +22,11 @@ jobs:
           repository-cache: true
           disk-cache: true
 
-      - name: Build Everything
-        run: |
-          bazel build --@pypi//venv=dev //...
+      - name: Verify MODULE.bazel.lock is up to date and build everything
+        run: bazel build --@pypi//venv=dev //...
 
       - name: Test Everything
-        run: bazel test //...
+        run: bazel --@pypi//venv=dev test //...
 
   lint-and-format:
     runs-on: ubuntu-latest
