@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import unittest
+from typing import TYPE_CHECKING
 
-import pandas as pd
 from python.runfiles import runfiles
 
 from he6_cres_spec_sims.simulation_blocks.config import Config
 from he6_cres_spec_sims.simulation_blocks.eventBuilder import EventBuilder
 from he6_cres_spec_sims.simulation_blocks.trackBuilder import TrackBuilder
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 def _build(jump_num_max: int) -> tuple[pd.DataFrame, list]:
