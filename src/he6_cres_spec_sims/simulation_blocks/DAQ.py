@@ -1,4 +1,5 @@
 import logging
+from contextlib import ExitStack, contextmanager
 
 from scipy import interpolate
 import pandas as pd
@@ -154,14 +155,24 @@ class DAQ:
 
         self.create_results_dir()
         self.spec_file_paths = self.build_file_paths(self.n_acquisitions, self.n_channels, self.spec_files_dir)
-        self.write_empty_files(self.spec_file_paths)
-        self._write_acquisitions(max_chunks)
+        with self._open_spec_files() as spec_files:
+            self._write_acquisitions(spec_files, max_chunks)
 
         logger.info("Done building {} files. ".format(self.config.daq.spec_suffix))
 
-    def _write_acquisitions(self, max_chunks):
+    @contextmanager
+    def _open_spec_files(self):
         """
-        Builds every acquisition chunk by chunk and appends it to the spec files in self.spec_file_paths.
+        Opens every file in self.spec_file_paths for writing, truncating existing content, and closes
+        them on exit. Yields the open files in the same [acq][channel] layout.
+        """
+        with ExitStack() as stack:
+            yield [[stack.enter_context(open(path, "wb")) for path in acq_paths] for acq_paths in self.spec_file_paths]
+
+    def _write_acquisitions(self, spec_files, max_chunks):
+        """
+        Builds every acquisition chunk by chunk and appends it to spec_files, the open files from
+        _open_spec_files.
         max_chunks: see run().
         """
         spec_array = np.zeros(shape=(self.slice_block, self.config.daq.freq_bins))
@@ -197,9 +208,9 @@ class DAQ:
                     # self.bins[channel] tells to write frequency bins [0-4095], [4096,8191]
                     # in _0.spec(k) and _1.spec(k) respectively. First ":" indicates write all time slices
                     if self.config.daq.spec_suffix == "spec":
-                        self.write_to_spec(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel], initial_packet)
+                        self.write_to_spec(spec_array[:,self.bins[channel]], spec_files[acq][channel], initial_packet)
                     elif self.config.daq.spec_suffix == "speck":
-                        self.write_to_speck(spec_array[:,self.bins[channel]], self.spec_file_paths[acq][channel], initial_packet, channel)
+                        self.write_to_speck(spec_array[:,self.bins[channel]], spec_files[acq][channel], initial_packet, channel)
                     else:
                         raise ValueError('Invalid spec_suffix: spec || speck')
 
@@ -386,16 +397,6 @@ class DAQ:
         self.spec_files_dir = self.results_dir / "spec_files"
         self.safe_mkdir(self.spec_files_dir)
 
-    def write_empty_files(self, files):
-        """
-        Create empty files to be filled with data (to be appended later)
-        files is list of paths of output spec(k) files organized
-        [[acq0_0.spec(k), _1.spec(k)],[acq1_0.spec(k), _1.spec(k)]...]
-        """
-        for acq in files:
-            for file_path in acq:
-                open(file_path, "wb")
-
     def spec_to_array(self, spec_path, slices=10000, start_packet=0):
         """
             Stolen (though modified) from He6DAQ: Data_Quality_Control.py, with 2^15 bitcode deprecated (as in data)
@@ -429,10 +430,10 @@ class DAQ:
         return np.array([aHunds, aTens, aOnes])
 
 
-    def write_to_spec(self, spec_array, spec_file_path, initial_packet):
+    def write_to_spec(self, spec_array, spec_file, initial_packet):
         """
-        Append to an existing spec file. This is necessary because the spec arrays get too large for 1s
-        worth of data.
+        Append to an open spec file. This is necessary because the spec arrays get too large for 1s
+        worth of data. spec_file is a binary file object opened for writing.
         """
         # Make spec file:
         slices_in_spec, freq_bins_in_spec = spec_array.shape
@@ -449,10 +450,7 @@ class DAQ:
 
         data = spec_array_hdrs.flatten().astype("uint8")
 
-        # Pass "ab" to append to a binary file
-        with open(spec_file_path, "ab") as spec_file:
-            # Write data to spec_file.
-            data.tofile(spec_file)
+        spec_file.write(data)
 
         return None
 
@@ -495,10 +493,10 @@ class DAQ:
 
         return [aTens, aOnes]
 
-    def write_to_speck(self, spec_array, speck_file_path, initial_packet, channel):
+    def write_to_speck(self, spec_array, speck_file, initial_packet, channel):
         """
-        Append to an existing speck file. This is necessary because the raw spec arrays get too large for 1s
-        worth of data.
+        Append to an open speck file. This is necessary because the raw spec arrays get too large for 1s
+        worth of data. speck_file is a binary file object opened for writing.
         """
 
         slices_in_spec, freq_bins_in_spec = spec_array.shape
@@ -545,9 +543,7 @@ class DAQ:
 
         data = np.concatenate(chunks).astype("uint8")
 
-        # Pass "ab" to append to a binary file
-        with open(speck_file_path, "ab") as speck_file:
-            data.tofile(speck_file)
+        speck_file.write(data)
 
         #fractionHighPowerPoints =  (len(data) - (len(header) + len(footer))  * slices_in_spec)  / (slices_in_spec * freq_bins_in_spec)
         #print("Fraction passing 0-supp: ",fractionHighPowerPoints)
