@@ -1,5 +1,7 @@
 load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 
+exports_files(["config_files/example.yaml"])
+
 sh_binary(
     name = "uv",
     srcs = ["//tools/uv:uv_wrapper.sh"],

@@ -1,10 +1,13 @@
-load("@aspect_rules_py//py:defs.bzl", "py_library")
+load("@aspect_rules_py//py:defs.bzl", "py_library", "py_test")
 load("@pypi//:requirements.bzl", "requirement")
 load("//tools:deps.bzl", "cdeps", "python_ide_backport")
 
 py_library(
     name = "he6_cres_spec_sims",
-    srcs = glob(["**/*.py"]),
+    srcs = glob(
+        ["**/*.py"],
+        exclude = ["**/*_test.py"],
+    ),
     data = [
         ":spec_tools/distributions/Data/He6.json",
         ":spec_tools/distributions/Data/Ne19.json",
@@ -23,6 +26,57 @@ py_library(
         requirement("scikit-learn"),
         requirement("uproot"),
     ]),
+)
+
+py_test(
+    name = "config_test",
+    srcs = [":simulation_blocks/config_test.py"],
+    data = ["//:config_files/example.yaml"],
+    main = ":simulation_blocks/config_test.py",
+    deps = [
+        ":he6_cres_spec_sims",
+        "@rules_python//python/runfiles",
+    ],
+)
+
+py_test(
+    name = "eventBuilder_test",
+    srcs = [":simulation_blocks/eventBuilder_test.py"],
+    data = ["//:config_files/example.yaml"],
+    main = ":simulation_blocks/eventBuilder_test.py",
+    deps = [
+        ":he6_cres_spec_sims",
+        "@rules_python//python/runfiles",
+    ],
+)
+
+py_test(
+    name = "DAQ_test",
+    srcs = [":simulation_blocks/DAQ_test.py"],
+    main = ":simulation_blocks/DAQ_test.py",
+    deps = [":he6_cres_spec_sims"],
+)
+
+py_test(
+    name = "physics_test",
+    srcs = [":simulation_blocks/physics_test.py"],
+    data = ["//:config_files/example.yaml"],
+    main = ":simulation_blocks/physics_test.py",
+    deps = [
+        ":he6_cres_spec_sims",
+        "@rules_python//python/runfiles",
+    ],
+)
+
+py_test(
+    name = "sideBandBuilder_test",
+    srcs = [":simulation_blocks/sideBandBuilder_test.py"],
+    data = ["//:config_files/example.yaml"],
+    main = ":simulation_blocks/sideBandBuilder_test.py",
+    deps = [
+        ":he6_cres_spec_sims",
+        "@rules_python//python/runfiles",
+    ],
 )
 
 python_ide_backport()
