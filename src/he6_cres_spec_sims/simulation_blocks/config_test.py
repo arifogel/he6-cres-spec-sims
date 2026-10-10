@@ -26,6 +26,10 @@ class ConfigTest(unittest.TestCase):
         main_field = config.eventbuilder.main_field
         self.assertAlmostEqual(config.field_strength(0, 0), main_field, delta=0.01 * main_field)
 
+    def test_field_at_the_trap_center_matches_the_known_value(self) -> None:
+        # Pins the trap field model's output for the example config's main field and trap current.
+        self.assertAlmostEqual(_example_config().field_strength(0, 0), 0.749255, places=6)
+
 
 if __name__ == "__main__":
     unittest.main()

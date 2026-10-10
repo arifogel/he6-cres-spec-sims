@@ -57,4 +57,26 @@ py_test(
     deps = [":he6_cres_spec_sims"],
 )
 
+py_test(
+    name = "physics_test",
+    srcs = [":simulation_blocks/physics_test.py"],
+    data = ["//:config_files/example.yaml"],
+    main = ":simulation_blocks/physics_test.py",
+    deps = [
+        ":he6_cres_spec_sims",
+        "@rules_python//python/runfiles",
+    ],
+)
+
+py_test(
+    name = "sideBandBuilder_test",
+    srcs = [":simulation_blocks/sideBandBuilder_test.py"],
+    data = ["//:config_files/example.yaml"],
+    main = ":simulation_blocks/sideBandBuilder_test.py",
+    deps = [
+        ":he6_cres_spec_sims",
+        "@rules_python//python/runfiles",
+    ],
+)
+
 python_ide_backport()
