@@ -79,4 +79,15 @@ py_test(
     ],
 )
 
+py_test(
+    name = "trackBuilder_test",
+    srcs = [":simulation_blocks/trackBuilder_test.py"],
+    data = ["//:config_files/example.yaml"],
+    main = ":simulation_blocks/trackBuilder_test.py",
+    deps = [
+        ":he6_cres_spec_sims",
+        "@rules_python//python/runfiles",
+    ],
+)
+
 python_ide_backport()
